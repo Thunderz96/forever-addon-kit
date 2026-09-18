@@ -46,6 +46,7 @@ not inferred from patch notes.
 ## Addons
 
 ### ForeverCDM
+Canonical source and releases: [Thunderz96/ForeverCDM](https://github.com/Thunderz96/ForeverCDM) (the copy here is a snapshot).
 A cooldown manager that needs no Blizzard CDM data. Three icon rows (cooldowns, utilities, buffs)
 read straight from the spellbook and `C_UnitAuras`. `/fcdm` opens a config window with a spellbook
 list, tick boxes per row, ordering, size and spacing. Display only. Tests in `tests/` run with Lua 5.2+ (tested on 5.4):
