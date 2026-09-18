@@ -1,0 +1,99 @@
+﻿addon,folders,files,api_refs,missing_names,missing_uses,compat_pct,top_missing
+TwintopInsanityBar,1,128,1533,0,0,100.0,
+NorthernSkyRaidTools,2,105,1001,0,0,100.0,
+Leatrix_Plus,1,5,820,0,0,100.0,
+SentinelHunterTools,1,36,699,0,0,100.0,
+CraftSim,1,173,641,0,0,100.0,
+LittleWigs,12,903,614,0,0,100.0,
+CooldownManagerCentered,1,66,506,0,0,100.0,
+RareScanner,1,151,479,0,0,100.0,
+WorldQuestsList,1,6,444,0,0,100.0,
+MythicDungeonTools,2,69,303,0,0,100.0,
+Hindsight,1,20,255,0,0,100.0,
+TalentTreeTweaks,1,39,245,0,0,100.0,
+DelveGuide,1,20,230,0,0,100.0,
+KeystoneLoot,1,65,220,0,0,100.0,
+Storyline,1,15,207,0,0,100.0,
+MyusKnowledgePointsTracker,1,17,193,0,0,100.0,
+UltimateMouseCursor,1,2,189,0,0,100.0,
+GTFO,1,65,188,0,0,100.0,
+HomeBound,1,4,154,0,0,100.0,
+FollowTheArrow,1,38,133,0,0,100.0,
+Dystinct_EarthenSkyriding,1,34,127,0,0,100.0,
+BountifulDelvesHunter-Midnight,1,4,108,0,0,100.0,
+AztarecHelper,1,12,98,0,0,100.0,
+CoTankAuras,1,7,84,0,0,100.0,
+CrossGambling,1,33,71,0,0,100.0,
+CursedSurgeTracker,1,1,66,0,0,100.0,
+MythicPlusUtility,1,22,63,0,0,100.0,
+TomTom,1,24,60,0,0,100.0,
+SpeedyAutoLoot,1,2,56,0,0,100.0,
+GatherMate2,4,17,52,0,0,100.0,
+AccountPlayed,1,5,46,0,0,100.0,
+MidnightMarketMaster,1,6,44,0,0,100.0,
+CallToArms,1,16,43,0,0,100.0,
+Preydator,1,39,41,0,0,100.0,
+ArmsCoach,1,5,39,0,0,100.0,
+TalentSwapper,1,3,39,0,0,100.0,
+AutoQueue,1,2,36,0,0,100.0,
+MythicPlusTimer,1,9,36,0,0,100.0,
+BugSack,1,6,29,0,0,100.0,
+CityGuide,1,17,28,0,0,100.0,
+Midnightcheck,1,2,26,0,0,100.0,
+MDTGuide,1,6,24,0,0,100.0,
+!ArchonLogger,1,2,21,0,0,100.0,
+TankAggroBar,1,2,17,0,0,100.0,
+MDT_Legacy,1,82,13,0,0,100.0,
+!BugGrabber,1,1,10,0,0,100.0,
+AutoCombatLogger,1,17,6,0,0,100.0,
+MinimapButtonButton,1,23,3,0,0,100.0,
+.claude,1,0,0,0,0,100.0,
+HandyNotes,4,137,818,1,1,99.9,IsCosmeticItem x1
+APR,1,120,652,1,1,99.8,C_Timer.Cancel x1
+ClassCodex,1,64,516,1,1,99.8,C_SpellBook.GetSpellInfo x1
+ProfessionShoppingList,1,24,466,1,1,99.8,GetCoinTextureString x1
+DejaCharacterStats,1,21,253,1,1,99.6,GetCoinTextureString x1
+LariasWeeklyChecklist,1,31,193,1,1,99.5,IsQuestFlaggedCompleted x1
+ArchonTooltip,2,506,154,1,1,99.4,C_Seasons.GetActiveSeason x1
+QuestCompletist,1,16,140,1,2,98.6,GetMapNameByID x2
+Simulationcraft,1,3,59,1,1,98.3,GetTalentInfo x1
+FarmHud,1,9,58,1,1,98.3,SetShown x1
+Routes,1,17,46,1,1,97.8,GetTrackingTexture x1
+TwitchEmotes,1,5,21,1,2,90.5,SetupAutoComplete x2
+NightPulse,1,7,16,1,1,93.8,C_ChallengeMode.GetCompletionInfo x1
+totalRP3,2,190,694,2,3,99.6,"GetChannelRosterInfo x2, GetStablePetInfo x1"
+GSE,5,65,672,2,2,99.7,"SetClipboard x1, GetSpellBookItemInfo x1"
+MidnightRoutine,1,70,555,2,3,99.5,"C_TaskQuest.GetQuestsForPlayerByMapID x2, C_DateAndTime.GetHolidayInfo x1"
+SilverDragon,4,172,540,2,3,99.4,"GetFactionInfoByID x2, IsCosmeticItem x1"
+DialogueUI,1,101,368,2,2,99.5,"GetQuestLogTitle x1, C_QuestLog.GetQuestInfo x1"
+LibTaxiData,1,25,49,2,2,95.9,"GetCurrencyInfo x1, GetFactionInfoByID x1"
+QuestTTS,1,5,28,2,2,92.9,"GetQuestLogTitle x1, GetQuestLogSelection x1"
+WagoAnalytics,1,1,19,2,3,84.2,"GetTalentTabInfo x2, GetPrimaryTalentTree x1"
+Platynator,1,77,718,3,3,99.6,"C_NamePlate.SetNamePlateFriendlyClickThrough x1, C_NamePlate.SetNamePlateEnemyClickThrough x1, GetQuestGreenRange x1"
+BigWigs,12,205,441,3,8,98.2,"GetTalentInfo x6, GetOwnedKeystoneChallengeMapID x1, GetTalentTabInfo x1"
+RaiderIO,16,98,285,3,3,98.9,"C_ChallengeMode.GetCompletionInfo x1, C_LootHistory.GetNumItems x1, C_LootHistory.GetItem x1"
+Mythistone,1,90,224,3,3,98.7,"CreateInlineGroup x1, CreateHeading x1, CreateBar x1"
+Beacon,1,3,89,3,3,96.6,"C_ChallengeMode.GetCompletionInfo x1, C_Catalyst.GetNumCharges x1, C_Catalyst.GetMaxCharges x1"
+WoWDBProfiler,1,3,54,3,5,90.7,"C_TaskQuest.GetQuestsForPlayerByMapID x2, C_TradeSkillUI.GetTradeSkillLine x2, C_TradeSkillUI.GetRecipeTools x1"
+EnhanceQoL,17,249,3686,4,5,99.9,"GetNumIgnores x2, C_GossipInfo.GetActiveDelveGossip x1, GetIgnoreName x1, UnitPopup_ShowMenu x1"
+Plumber,1,195,1349,4,5,99.6,"GetTrackedAchievements x2, GetNumQuestLogRewardCurrencies x1, GetQuestLogRewardCurrencyInfo x1, C_Transmog.SetPending x1"
+WorldQuestTracker,1,36,551,4,4,99.3,"C_ChallengeMode.GetOverallDungeonScoreRarityColor x1, C_Timer.CancelTimer x1, QuestObjectiveFindGroup_ReleaseButton x1, QuestObjectiveFindGroup_AcquireButton x1"
+Bartender4,1,47,196,4,5,97.4,"IsHarmfulSpell x2, IsSpellHelpful x1, IsSpellHarmful x1, IsHelpfulSpell x1"
+TidyPlates_ThreatPlates,1,69,173,4,4,97.7,"GetAuraDataByAuraInstanceID x1, SpellFilterCC x1, GetQuestLogTitle x1, C_FriendList_GetNumOnlineFriends x1"
+WagoAppCompanion,1,2,4,4,4,0.0,"IsZKDP9rC4PVV7thwZ2TesCrOxfjvsp5DVU7VN54paBsOKd x1, Isq40T3FD6sWK4a x1, IsjwkJ x1, Isffcao0M8XQriy x1"
+OakLFGSorter,1,25,470,5,12,97.4,"C_NOTE.w x4, C_KEY.x x3, C_KEY.w x2, C_NOTE.x x2, C_LFGList.GetSearchResultMemberInfo x1"
+EllesmereUI,21,155,4831,6,7,99.9,"C_ChallengeMode.GetCompletionInfo x2, ShowFriendlyPlayerPopup x1, ShowSubtitlePopup x1, ShowNPCCogPopup x1, ShowImpCastGlowPopup x1"
+AutoTurnIn,1,16,185,6,10,94.6,"GetCoinTextureString x3, GetItemSubClassInfo x2, GetItemClassInfo x2, EquipItemByName x1, GetItemStats x1"
+Clique,1,39,110,6,12,89.1,"GetSpellBookItemInfo x6, GetNumSpellTabs x2, HasPetSpells x1, GetSpellTabInfo x1, GetSpellSubtext x1"
+ElvUI,4,1014,1055,9,16,98.5,"C_LootHistory.GetItem x5, C_LootHistory.GetNumItems x4, C_Engraving.GetRuneCategories x1, GetUITextureKitInfo x1, C_Reforge.GetReforgeItemInfo x1"
+ForeverBeacon,1,8,177,9,9,94.9,"GetQuestLogTitle x1, GetSpellTabInfo x1, GetSpellBookItemInfo x1, GetSpellBookItemName x1, GetTalentTabInfo x1"
+AngryKeystones,1,10,125,9,10,92.0,"C_ChallengeMode.GetCompletionInfo x2, C_ChallengeMode.GetMapInfo x1, GetCurrentMapAreaID x1, GetCurrentMapDungeonLevel x1, SetMapToCurrentZone x1"
+DBM-Brawlers,9,194,968,10,17,98.2,"GetNamePlates x5, GetTalentTabInfo x3, GetBestMapForUnit x2, GetPrimaryTalentTree x1, GetNumTalentTabs x1"
+Syndicator,1,32,400,10,16,96.0,"GetAuctionItemInfo x3, GetAuctionItemLink x3, IsReagentBankUnlocked x2, GetVoidItemInfo x2, GetOwnerAuctionItems x1"
+Plater,1,56,1139,11,11,99.0,"GetGlyphSocketInfo x1, GetTalentGroupRole x1, GetActiveTalentGroup x1, IsEquippedItemType x1, C_NamePlate.SetNamePlateFriendlyPreferredClickInsets x1"
+Details,8,206,994,11,16,98.4,"SetSpecialization x4, C_SpellBook.GetOverrideSpell x3, GetMSTime x1, GetStartTime x1, GetEndTime x1"
+RXPGuides,1,328,1145,14,32,97.2,"GetGroupPreviewTalentPointsSpent x9, GetTalentInfo x6, C_Scenario.GetCriteriaInfo x2, C_Scenario.GetCriteriaInfoByStep x2, GetAuctionItemLink x2"
+Baganator,1,111,1039,15,21,98.0,"GetNumBankSlots x4, EquipmentManager_UnpackLocation x2, C_Engraving.GetRuneForEquipmentSlot x2, GetBankSlotCost x2, C_Engraving.GetRuneForInventorySlot x1"
+ConsolePort,9,200,1396,28,40,97.1,"GetGamePadState x4, CreateKeyChord x3, IsPressHoldReleaseSpell x3, GetScript x3, GetID x3"
+Auctionator,1,341,736,28,69,90.6,"GetTradeSkillSelectionIndex x7, GetAuctionItemInfo x6, GetAuctionItemLink x6, GetNumAuctionItems x5, GetCraftReagentInfo x4"
+TradeSkillMaster,1,529,666,48,71,89.3,"GetNumAuctionItems x4, GetAuctionItemLink x4, GetTradeSkillLine x4, GetTradeSkillInfo x4, GetAuctionItemInfo x3"

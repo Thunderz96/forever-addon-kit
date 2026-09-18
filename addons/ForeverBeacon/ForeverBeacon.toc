@@ -1,0 +1,17 @@
+## Interface: 16001, 11508, 20506, 50504, 120100, 120105
+## Title: Forever Beacon
+## Notes: Harvests world data (quests, NPCs, items, loot, spells, zones, API surface) to SavedVariables during the WoW: Forever beta.
+## IconTexture: Interface\Icons\INV_Misc_Gear_01
+## Author: Thunderz
+## Version: 0.3.9
+## SavedVariables: ForeverBeaconDB
+## X-Flavor-Note: 16001 = WoW Forever beta 1.60.1.69893 (wow_classic_beta), confirmed 2026-09-17.
+
+FB_JSON.lua
+FB_Core.lua
+FB_Probe.lua
+FB_World.lua
+FB_Units.lua
+FB_Items.lua
+FB_Spells.lua
+FB_Quests.lua

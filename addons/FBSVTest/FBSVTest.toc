@@ -1,0 +1,8 @@
+## Interface: 16001
+## Title: Forever Beacon - SV Timing Test
+## Notes: Temporary. Measures when pre-seeded SavedVariables reach an addon on the Forever beta client.
+## Author: Thunderz
+## Version: 0.1.0
+## SavedVariables: FBSVTestSeeded, FBSVTestEager, FBSVTestLog
+
+FBSVTest.lua

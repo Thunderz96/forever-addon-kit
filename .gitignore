@@ -1,0 +1,10 @@
+# personal state never goes in the repo
+addons/ForeverCompat/seeds/*.lua
+addons/ForeverBeacon/data/
+data/raw/
+sv-backups/
+*.log
+*.lock
+__pycache__/
+*.pyc
+.claude/

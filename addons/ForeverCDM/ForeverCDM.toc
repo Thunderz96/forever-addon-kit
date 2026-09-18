@@ -1,0 +1,10 @@
+## Interface: 16001
+## Title: |cffd2621fForever|r Cooldown Manager
+## Notes: Cooldown and buff icon rows that read the spellbook and your auras directly. Does not depend on Blizzard's Cooldown Manager data, which is empty on Forever.
+## Author: Thunderz
+## Version: 0.3.3
+## SavedVariables: ForeverCDMDB
+## IconTexture: Interface\Icons\Spell_Holy_SealOfRighteousness
+
+ForeverCDM.lua
+ForeverCDM_UI.lua
