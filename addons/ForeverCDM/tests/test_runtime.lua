@@ -17,18 +17,28 @@ local function object(kind, name, parent)
     if name then _G[name] = f end
     return f
 end
-for _, name in ipairs({ 'SetTexCoord', 'ClearAllPoints', 'SetMovable', 'SetClampedToScreen',
+for _, name in ipairs({ 'SetTexCoord', 'SetMovable', 'SetClampedToScreen',
     'SetDrawEdge', 'SetHideCountdownNumbers', 'SetDesaturated', 'SetCooldown',
     'SetCooldownFromDurationObject', 'Clear', 'SetAllPoints', 'SetColorTexture',
     'RegisterForDrag', 'StartMoving', 'StopMovingOrSizing', 'SetFrameStrata',
     'SetBackdrop', 'SetBackdropColor', 'SetJustifyH', 'SetAutoFocus', 'SetOwner',
-    'SetSpellByID', 'SetVerticalScroll', 'SetScrollStep', 'SetEnabled' }) do methods[name] = noop end
+    'SetSpellByID', 'SetVerticalScroll', 'SetScrollStep', 'SetEnabled',
+    -- used by the flat widget kit and the minimap button
+    'SetTextColor', 'SetFontString', 'SetCheckedTexture', 'SetFontObject', 'SetTextInsets', 'ClearFocus',
+    'EnableMouseWheel', 'SetVertexColor', 'SetFrameLevel', 'RegisterForClicks', 'SetHighlightTexture',
+    'SetToplevel', 'SetAtlas', 'AddLine' }) do methods[name] = noop end
+function methods:GetVerticalScroll() return 0 end
+function methods:GetVerticalScrollRange() return 0 end
+function methods:GetCenter() return 0, 0 end
+function methods:GetEffectiveScale() return 1 end
 function methods:SetSize(w, h) self.width, self.height = w, h end
 function methods:SetHeight(h) self.height = h end
 function methods:SetWidth(w) self.width = w end
 function methods:GetWidth() return self.width or 100 end
 function methods:GetHeight() return self.height or 100 end
-function methods:SetPoint(...) self.point = {...} end
+-- like a real frame, point 1 is the first anchor set since the last ClearAllPoints
+function methods:SetPoint(...) if not self.point then self.point = {...} end end
+function methods:ClearAllPoints() self.point = nil end
 function methods:GetPoint() return unpack(self.point) end
 function methods:SetText(t) self.textValue = t end
 function methods:GetText() return self.textValue or '' end
@@ -51,10 +61,15 @@ function methods:Hide() self.shown = false end
 function methods:SetShown(v) if v then self:Show() else self:Hide() end end
 CreateFrame = object
 UIParent, GameTooltip = object('Frame'), object('Tooltip')
+Minimap = object('Frame')
+Minimap.width = 140
+local cursorX, cursorY = 0, 0
+GetCursorPosition = function() return cursorX, cursorY end
 C_Timer = { NewTicker = noop, After = function(_, fn) fn() end }
 Enum = { SpellBookSpellBank = { Player = 0 } }
-local spells = {101, 102}
-local names = { [101] = 'First Spell', [102] = 'Second Spell', [103] = 'Newly Learned' }
+local spells = {101, 102, 104}
+local names = { [101] = 'First Spell', [102] = 'Second Spell', [103] = 'Newly Learned', [104] = 'First Spell' }
+local ranks = { [101] = 'Rank 1', [104] = 'Rank 2' }
 C_Spell = {
     GetSpellName = function(id) return names[id] end,
     GetSpellTexture = function(id) return id end,
@@ -65,7 +80,7 @@ C_UnitAuras = { GetPlayerAuraBySpellID = function() return nil end }
 C_SpellBook = {
     GetNumSpellBookSkillLines = function() return 1 end,
     GetSpellBookSkillLineInfo = function() return { itemIndexOffset = 0, numSpellBookItems = #spells, name = 'Paladin' } end,
-    GetSpellBookItemInfo = function(i) return { spellID = spells[i], name = names[spells[i]] } end,
+    GetSpellBookItemInfo = function(i) return { spellID = spells[i], name = names[spells[i]], subName = ranks[spells[i]] } end,
 }
 local oldCDs, oldBuffs = {102, 101}, {101}
 local oldPosition = {'CENTER', 7, -244}
@@ -121,4 +136,64 @@ ForeverCDM_RefreshConfig()
 assert(orderRow(1).name:GetText() == 'Newly Learned', 'Utility ordering list did not refresh')
 ForeverCDMConfig.orderClear.scripts.OnClick(ForeverCDMConfig.orderClear)
 assert(#ForeverCDMDB.utilities == 0 and #oldCDs == 2, 'Clear bar affected wrong list')
-print('runtime migration, config, learned-spell refresh, and utility checks passed')
+-- Older profiles had one size for every bar; it seeds each bar once and the old field is left alone.
+assert(ForeverCDMDB.rowSize.cds == 42 and ForeverCDMDB.rowSize.buffs == 42 and ForeverCDMDB.rowSpacing.utilities == 4,
+    'per-bar size/spacing were not seeded from the old single values')
+-- The steppers act on the bar chosen by the tabs, and only that bar.
+ForeverCDMConfig.orderKey = 'buffs'
+ForeverCDM_RefreshConfig()
+ForeverCDMConfig.sizePlus.scripts.OnClick(ForeverCDMConfig.sizePlus)
+ForeverCDMConfig.spacingMinus.scripts.OnClick(ForeverCDMConfig.spacingMinus)
+assert(ForeverCDMDB.rowSize.buffs == 44 and ForeverCDMDB.rowSize.cds == 42, 'size stepper touched the wrong bar')
+assert(ForeverCDMDB.rowSpacing.buffs == 2 and ForeverCDMDB.rowSpacing.cds == 4, 'spacing stepper touched the wrong bar')
+assert(ForeverCDMConfig.sizeText:GetText() == '44', 'stepper readout did not follow the selected bar')
+SlashCmdList['FOREVERCDM']('size utility 30')
+assert(ForeverCDMDB.rowSize.utilities == 30 and ForeverCDMDB.rowSize.buffs == 44, '/fcdm size <bar> <px> touched other bars')
+SlashCmdList['FOREVERCDM']('spacing 6')
+assert(ForeverCDMDB.rowSpacing.cds == 6 and ForeverCDMDB.rowSpacing.buffs == 6, '/fcdm spacing <px> should set every bar')
+
+-- Ranks: both ranks listed, labelled, Rank 1 above Rank 2.
+local r1, r2
+for _, f in ipairs(frames) do
+    if f.kind == 'FontString' and type(f.textValue) == 'string' and f.parent and f.parent.cd then
+        if f.textValue:find('First Spell', 1, true) and f.textValue:find('Rank 1', 1, true) then r1 = f.parent end
+        if f.textValue:find('First Spell', 1, true) and f.textValue:find('Rank 2', 1, true) then r2 = f.parent end
+    end
+end
+assert(r1 and r2, 'spell rows do not show their rank')
+assert(r1.id == 101 and r2.id == 104, 'rank labels are on the wrong spells')
+assert(r1.point[5] > r2.point[5], 'Rank 1 should be listed above Rank 2')
+assert(ForeverCDM.SpellRank(102) == nil and ForeverCDM.RankNumber(104) == 2, 'rank lookup wrong')
+
+-- Spell rows are grouped under one heading per spellbook tab.
+local headings = 0
+for _, f in ipairs(frames) do
+    if f.kind == 'FontString' and f.textValue == 'PALADIN' then headings = headings + 1 end
+end
+assert(headings == 1, 'expected exactly one PALADIN heading, got ' .. headings)
+
+-- Minimap button: built at login, opens settings, right-click locks, drag saves the angle.
+local mm = ForeverCDMMinimapButton
+assert(mm and mm:IsShown(), 'minimap button was not created at login')
+assert(ForeverCDMDB.minimap.angle == 215 and ForeverCDMDB.minimap.hide == false, 'minimap defaults missing')
+ForeverCDMConfig:Hide()
+mm.scripts.OnClick(mm, 'LeftButton')
+assert(ForeverCDMConfig:IsShown(), 'left-click did not open settings')
+mm.scripts.OnClick(mm, 'LeftButton')
+assert(not ForeverCDMConfig:IsShown(), 'second left-click did not close settings')
+local wasLocked = ForeverCDMDB.locked
+mm.scripts.OnClick(mm, 'RightButton')
+assert(ForeverCDMDB.locked == (not wasLocked), 'right-click did not toggle the row lock')
+mm.scripts.OnClick(mm, 'RightButton')
+cursorX, cursorY = 0, 100                      -- straight up from the minimap centre
+mm.scripts.OnDragStart(mm)
+mm.scripts.OnUpdate(mm)
+mm.scripts.OnDragStop(mm)
+assert(math.abs(ForeverCDMDB.minimap.angle - 90) < 0.001, 'drag did not save the angle')
+assert(mm.scripts.OnUpdate == nil, 'drag tracking was left running')
+SlashCmdList['FOREVERCDM']('minimap')
+assert(ForeverCDMDB.minimap.hide == true and not mm:IsShown(), '/fcdm minimap did not hide the button')
+SlashCmdList['FOREVERCDM']('minimap')
+assert(ForeverCDMDB.minimap.hide == false and mm:IsShown(), '/fcdm minimap did not show it again')
+
+print('runtime migration, config, learned-spell refresh, utility, grouping and minimap checks passed')

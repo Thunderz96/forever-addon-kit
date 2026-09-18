@@ -1,5 +1,7 @@
 # ForeverCDM
 
+<img src=".github/logo.png" width="128" align="right" alt="Forever Cooldown Manager logo">
+
 A cooldown manager for **World of Warcraft: Forever** that needs no Blizzard Cooldown Manager data.
 
 Blizzard's Cooldown Manager has no authored data for Forever classes yet, so every addon that skins
@@ -29,6 +31,7 @@ Tests run under Lua 5.2+ with no game client:
 lua tests/test_secret_duration.lua ForeverCDM.lua
 lua tests/test_runtime.lua
 lua tests/test_cast_tracking.lua
+lua tests/test_persist.lua
 ```
 Releases are built by the GitHub Actions workflow on any `v*` tag. Findings about the Forever client
 that shaped this addon live in [forever-addon-kit](https://github.com/Thunderz96/forever-addon-kit).

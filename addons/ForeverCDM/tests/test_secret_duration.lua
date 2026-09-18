@@ -54,7 +54,7 @@ end
 icons.cds[1] = frame()
 icons.buffs[1] = frame()
 
-local chunk = "local icons, db, secret, C_Spell, C_UnitAuras = ...; "
+local chunk = "local icons, db, secret, C_Spell, C_UnitAuras = ...; local persistSoon = function() end; "
     .. block("updateCooldowns", "updateBuffs") .. "\n"
     .. block("updateBuffs", "refreshAll")
 local updateCooldowns, updateBuffs = assert(load(chunk .. "\nreturn updateCooldowns, updateBuffs"))(icons, db, secret, C_Spell, C_UnitAuras)

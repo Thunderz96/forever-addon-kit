@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.4.0 (2026-09-18)
+- **Your setup can now survive a game restart on the beta.** The Forever beta client saves addon
+  settings and never loads them back, so every addon starts from defaults. Tick "Keep settings in
+  a macro" (or `/fcdm mirror on`) and the addon keeps your setup in one general macro per
+  character, which the client does bring back, and restores it when the saved settings come back
+  empty. It is opt-in, so nobody gets a macro they did not ask for; if your settings were forgotten
+  and the option is off, the addon tells you once. Clicking the macro is harmless. Once Blizzard
+  fixes the client it simply stops being needed. `/fcdm mirror` shows its state.
+  Measured first: CVars registered by an addon do not reach disk on this build, even after a clean
+  logout, so that route was dropped.
+- **Each bar has its own icon size and spacing.** Pick a bar in the Bars card and adjust it there.
+  `/fcdm size buffs 30` sets one bar, `/fcdm size 40` sets them all.
+- **Spell ranks are shown.** Forever lists every rank as its own spell, so the spellbook and bar
+  lists now say "Rank 1", "Rank 2", in rank order.
+- A buff ticked as one rank lights up when you cast another rank of the same spell.
+- Auto-fill adds only the highest rank of each spell.
+
+## 0.3.6 (2026-09-18)
+- Settings window redrawn: solid background, three titled cards (Spellbook, Bar order, Settings),
+  spells grouped under their spellbook tab, hover highlight, a scroll position thumb, and flat
+  buttons and tick boxes drawn by the addon itself. No Blizzard templates are used any more, so UI
+  suites that reskin those templates can no longer distort the window.
+- Bar order shows each spell's icon, uses arrow buttons, and says how many icons the bar holds.
+- Minimap button: left-click opens settings, right-click locks or unlocks the rows, drag to move it
+  round the minimap. Hide it with the Settings tick box or `/fcdm minimap`.
+- The addon has its own icon in the addon list, the window header and the minimap button.
+
 ## 0.3.5 (2026-09-18)
 - Buffs you cast yourself are now followed through combat by your own cast event, which stays
   readable when auras do not. The timer uses a duration the addon measured out of combat, so a

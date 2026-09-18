@@ -37,6 +37,8 @@ local db
 local rows = {}          -- key -> row frame
 local icons = { cds = {}, utilities = {}, buffs = {} }
 local BAR_KEYS = { "cds", "utilities", "buffs" }
+local persistSoon        -- defined in the settings-mirror section; called wherever settings change
+local lateMirror         -- defined just above the event frame
 
 local function say(fmt, ...) print(NAME .. ": " .. string.format(fmt, ...)) end
 
@@ -63,6 +65,15 @@ local function ensureDB()
     db.utilities = db.utilities or {}
     db.pos.utilities = db.pos.utilities or { "CENTER", 0, -220 }
     db.buffDurations = db.buffDurations or {}   -- spellID -> seconds, learned out of combat
+    db.minimap = db.minimap or { angle = 215, hide = false }
+    -- Each bar has its own icon size and spacing. Older profiles had one pair
+    -- for all bars (db.size / db.spacing), which seeds the per-bar values once.
+    db.rowSize = db.rowSize or {}
+    db.rowSpacing = db.rowSpacing or {}
+    for _, key in ipairs(BAR_KEYS) do
+        db.rowSize[key] = db.rowSize[key] or db.size
+        db.rowSpacing[key] = db.rowSpacing[key] or db.spacing
+    end
 end
 
 -- Spell helpers ---------------------------------------------------------------
@@ -116,7 +127,7 @@ end
 local function layoutRow(key)
     local row = rows[key]
     local list = db[key]
-    local size, gap = db.size, db.spacing
+    local size, gap = db.rowSize[key], db.rowSpacing[key]
     local shown = 0
     for i, id in ipairs(list) do
         local f = icons[key][i]
@@ -167,6 +178,7 @@ local function newRow(key, label)
         self:StopMovingOrSizing()
         local point, _, _, x, y = self:GetPoint(1)
         db.pos[key] = { point, x, y }
+        persistSoon()
     end)
     rows[key] = row
     return row
@@ -174,13 +186,14 @@ end
 
 function ForeverCDM_SetLocked(locked)
     db.locked = locked
-    for _, row in pairs(rows) do
+    for key, row in pairs(rows) do
         row:EnableMouse(not locked)
         row.bg:SetShown(not locked)
         row.label:SetShown(not locked)
         -- an empty row still needs something to grab
-        if not locked and row:GetWidth() < 40 then row:SetSize(40, db.size) end
+        if not locked and row:GetWidth() < 40 then row:SetSize(40, db.rowSize[key]) end
     end
+    persistSoon()
 end
 
 -- Updates -------------------------------------------------------------------------
@@ -222,6 +235,47 @@ local function updateCooldowns(key)
     end
 end
 
+-- Spell ranks. Forever lists every rank of a spell as its own spellbook entry
+-- with its own spellID, so "Seal of Righteousness" can be three IDs. rankText
+-- holds the label ("Rank 2"); siblings maps an ID to every ID sharing its name,
+-- so a buff ticked as Rank 1 still lights up when you cast Rank 2.
+local rankText, siblings = {}, {}
+
+local function buildRankIndex()
+    rankText, siblings = {}, {}
+    if not (C_SpellBook and C_SpellBook.GetNumSpellBookSkillLines) then return end
+    local bank = Enum and Enum.SpellBookSpellBank and Enum.SpellBookSpellBank.Player or 0
+    local byName = {}
+    for line = 1, C_SpellBook.GetNumSpellBookSkillLines() do
+        local info = C_SpellBook.GetSpellBookSkillLineInfo(line)
+        if info then
+            for i = info.itemIndexOffset + 1, info.itemIndexOffset + info.numSpellBookItems do
+                local item = C_SpellBook.GetSpellBookItemInfo(i, bank)
+                if item and item.spellID and not item.isPassive then
+                    local sub = item.subName
+                    if (not sub or sub == "") and C_Spell and C_Spell.GetSpellSubtext then
+                        sub = C_Spell.GetSpellSubtext(item.spellID)
+                    end
+                    if sub and sub ~= "" then rankText[item.spellID] = sub end
+                    local name = item.name or item.spellID
+                    byName[name] = byName[name] or {}
+                    table.insert(byName[name], item.spellID)
+                end
+            end
+        end
+    end
+    for _, ids in pairs(byName) do
+        if #ids > 1 then
+            for _, id in ipairs(ids) do siblings[id] = ids end
+        end
+    end
+end
+
+-- "Rank 12" -> 12; 0 when the spell has no numbered rank.
+local function rankNumber(id)
+    return tonumber((rankText[id] or ""):match("%d+")) or 0
+end
+
 -- Is THIS spell's aura secret right now? The client answers per spell
 -- (C_Secrets.ShouldSpellAuraBeSecret), which is finer than the global
 -- ShouldAurasBeSecret: a buff Blizzard marks NeverSecret stays readable in
@@ -245,6 +299,15 @@ local function updateBuffs()
             -- protected or it burns the client's 100-error cap in under a minute.
             local okA, a = pcall(C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID or function() end, f.spellID)
             if not okA or secret(a) or (issecrettable and issecrettable(a)) then a = nil end
+            -- Not up under this exact ID: it may be up as another rank of the same spell.
+            if not a and siblings[f.spellID] then
+                for _, sid in ipairs(siblings[f.spellID]) do
+                    if sid ~= f.spellID then
+                        local okS, s = pcall(C_UnitAuras.GetPlayerAuraBySpellID, sid)
+                        if okS and s and not secret(s) and not (issecrettable and issecrettable(s)) then a = s break end
+                    end
+                end
+            end
             -- A spell-ID lookup may stop identifying an aura during combat. Only
             -- reuse an instance we previously identified; never guess its spell.
             if not a and restricted and f.auraInstanceID and C_UnitAuras.GetAuraDataByAuraInstanceID then
@@ -274,7 +337,10 @@ local function updateBuffs()
                     -- Remember how long this buff lasts. In combat the aura is
                     -- unreadable, but our own cast event plus this number is
                     -- enough to draw an honest timer (see onPlayerCast).
-                    db.buffDurations[f.spellID] = dur
+                    if db.buffDurations[f.spellID] ~= dur then
+                        db.buffDurations[f.spellID] = dur
+                        persistSoon()
+                    end
                 else
                     f.cd:Clear()
                 end
@@ -410,10 +476,11 @@ local function refreshAll()
     updateCooldowns("cds")
     updateCooldowns("utilities")
     updateBuffs()
+    persistSoon()      -- every settings change funnels through here
 end
 
 -- Auto-populate from the spellbook: active, non-passive spells that have a
--- cooldown longer than the global one.
+-- cooldown longer than the global one. Only the highest rank of each spell.
 local function autoPopulate()
     if not (C_SpellBook and C_SpellBook.GetNumSpellBookSkillLines) then say("spellbook API not available.") return 0 end
     local bank = Enum and Enum.SpellBookSpellBank and Enum.SpellBookSpellBank.Player or 0
@@ -423,7 +490,13 @@ local function autoPopulate()
         if info then
             for i = info.itemIndexOffset + 1, info.itemIndexOffset + info.numSpellBookItems do
                 local item = C_SpellBook.GetSpellBookItemInfo(i, bank)
-                if item and item.spellID and not item.isPassive and not item.isOffSpec then
+                local topRank = true
+                if item and item.spellID and siblings[item.spellID] then
+                    for _, sid in ipairs(siblings[item.spellID]) do
+                        if rankNumber(sid) > rankNumber(item.spellID) then topRank = false end
+                    end
+                end
+                if item and item.spellID and not item.isPassive and not item.isOffSpec and topRank then
                     local id = item.spellID
                     local c = C_Spell.GetSpellCooldown and C_Spell.GetSpellCooldown(id)
                     local ch = C_Spell.GetSpellCharges and C_Spell.GetSpellCharges(id)
@@ -449,8 +522,208 @@ local function autoPopulate()
     return added
 end
 
+-- Settings mirror ---------------------------------------------------------------------
+-- WHY: the Forever beta client writes addon SavedVariables on exit and never
+-- loads them at the next launch, so every addon starts from defaults.
+--
+-- MEASURED 2026-09-18 on build 1.60.1.69893: CVars an addon registers itself do
+-- NOT reach disk, even after a clean logout (config-cache.wtf only ever holds
+-- Blizzard's own CVars). A macro created through the API DOES survive a cold
+-- start. So the mirror lives in an account macro, one per character.
+--
+-- Rules:
+--   * Opt-in (db.macroMirror): nobody gets a macro they did not ask for. The
+--     macro existing is itself the "on" flag, so the choice survives too.
+--   * A SavedVariables table that did load always wins; the macro is only
+--     applied when it came back empty. Once Blizzard fixes the client this
+--     never restores anything.
+--   * Never write before reading. On a cold start the macro list can arrive
+--     after PLAYER_LOGIN; saving first would replace the stored setup with
+--     defaults. Writes wait for mirror.ready.
+--   * The body is a real slash command, so clicking the macro explains itself
+--     instead of sending the text to /say.
+--   * Macro edits are blocked in combat; a pending write waits for it to end.
+local MIRROR_DATA, MIRROR_MACROS = 235, 3      -- data characters per macro, macros per character
+local MIRROR_ICON = "INV_Misc_Gear_01"
+local mirror = { hadSV = false, found = 0, restored = false, ready = false, wrote = 0, note = "nothing written yet" }
+local mirrorDirty, hinted = false, false
+
+local function mirrorName(i)
+    -- hashed so any character name, in any alphabet, gives a short plain macro name (16 character limit)
+    local who = tostring(UnitName and UnitName("player") or "") .. "-" .. tostring(GetRealmName and GetRealmName() or "")
+    local h = 5381
+    for c = 1, #who do h = (h * 33 + who:byte(c)) % 2147483647 end
+    return string.format("FCDM%08x%d", h, i)
+end
+
+local function macroAPI()
+    return CreateMacro and EditMacro and DeleteMacro and GetMacroBody and GetMacroIndexByName and true or false
+end
+
+local function encodeSettings(withDurations)
+    local parts = {}
+    local function put(k, v) parts[#parts + 1] = k .. "=" .. v end
+    put("v", "1")
+    put("L", db.locked and "1" or "0")
+    put("hr", db.hideReady and "1" or "0")
+    put("sn", db.showNames and "1" or "0")
+    put("mm", string.format("%d,%s", math.floor((db.minimap.angle or 215) + 0.5), db.minimap.hide and "1" or "0"))
+    local sz, gp = {}, {}
+    for i, key in ipairs(BAR_KEYS) do sz[i], gp[i] = db.rowSize[key], db.rowSpacing[key] end
+    put("sz", table.concat(sz, ","))
+    put("gp", table.concat(gp, ","))
+    for _, key in ipairs(BAR_KEYS) do
+        local tag = key:sub(1, 1)                  -- c, u, b
+        put("i" .. tag, table.concat(db[key], ","))
+        local p = db.pos[key]
+        put("p" .. tag, string.format("%s,%.1f,%.1f", tostring(p[1]), p[2] or 0, p[3] or 0))
+    end
+    if withDurations then
+        local dur = {}
+        for _, id in ipairs(db.buffs) do
+            if db.buffDurations[id] then dur[#dur + 1] = id .. ":" .. string.format("%.1f", db.buffDurations[id]) end
+        end
+        put("d", table.concat(dur, ","))
+    end
+    return table.concat(parts, ";")
+end
+
+local function applySettings(s)
+    local t = {}
+    for k, v in s:gmatch("([^;=]+)=([^;]*)") do t[k] = v end
+    if t.v ~= "1" then return false end
+    local function nums(str)
+        local out = {}
+        for n in (str or ""):gmatch("[^,]+") do out[#out + 1] = tonumber(n) end
+        return out
+    end
+    db.locked = t.L ~= "0"
+    db.hideReady = t.hr == "1"
+    db.showNames = t.sn == "1"
+    local angle, hide = (t.mm or ""):match("^(-?%d+),(%d)$")
+    if angle then db.minimap.angle, db.minimap.hide = tonumber(angle), hide == "1" end
+    local sz, gp = nums(t.sz), nums(t.gp)
+    for i, key in ipairs(BAR_KEYS) do
+        if sz[i] then db.rowSize[key] = sz[i] end
+        if gp[i] then db.rowSpacing[key] = gp[i] end
+        local tag = key:sub(1, 1)
+        if t["i" .. tag] then db[key] = nums(t["i" .. tag]) end
+        local point, x, y = (t["p" .. tag] or ""):match("^(%a+),(-?[%d%.]+),(-?[%d%.]+)$")
+        if point then db.pos[key] = { point, tonumber(x), tonumber(y) } end
+    end
+    for id, dur in (t.d or ""):gmatch("(%d+):([%d%.]+)") do
+        db.buffDurations[tonumber(id)] = tonumber(dur)
+    end
+    return true
+end
+
+-- The stored string, or nil. Each macro body is "/fcdm store <i>/<n> <data>".
+local function readMirror()
+    if not macroAPI() then return nil end
+    local parts, total = {}, nil
+    for i = 1, MIRROR_MACROS do
+        local ok, index = pcall(GetMacroIndexByName, mirrorName(i))
+        if not ok or not index or index == 0 then break end
+        local okB, body = pcall(GetMacroBody, index)
+        local n, of, data = (okB and body or ""):match("^/fcdm store (%d+)/(%d+) (.*)$")
+        if tonumber(n) ~= i then break end
+        total = total or tonumber(of)
+        parts[i] = data
+        if i == total then break end
+    end
+    if not total or #parts ~= total then return nil end
+    return table.concat(parts)
+end
+
+local function deleteMirror()
+    if not macroAPI() then return end
+    for i = MIRROR_MACROS, 1, -1 do
+        local ok, index = pcall(GetMacroIndexByName, mirrorName(i))
+        if ok and index and index > 0 then pcall(DeleteMacro, index) end
+    end
+end
+
+local function writeMirror()
+    mirrorDirty = false
+    if not (db and db.macroMirror and mirror.ready) then return end
+    if not macroAPI() then mirror.note = "this client has no macro API" return end
+    if InCombatLockdown and InCombatLockdown() then
+        mirror.note = "waiting for combat to end"
+        mirror.afterCombat = true          -- PLAYER_REGEN_ENABLED picks this up
+        return
+    end
+    local s = encodeSettings(true)
+    if #s > MIRROR_DATA * MIRROR_MACROS then s = encodeSettings(false) end      -- durations are re-learnable
+    if #s > MIRROR_DATA * MIRROR_MACROS then                                    -- keep the last good copy
+        mirror.note = "settings too large for the macro; the last saved copy was kept"
+        return
+    end
+    local n = math.max(1, math.ceil(#s / MIRROR_DATA))
+    for i = 1, MIRROR_MACROS do
+        local name = mirrorName(i)
+        local ok, index = pcall(GetMacroIndexByName, name)
+        index = ok and index or 0
+        if i <= n then
+            local body = string.format("/fcdm store %d/%d %s", i, n, s:sub((i - 1) * MIRROR_DATA + 1, i * MIRROR_DATA))
+            if index > 0 then
+                pcall(EditMacro, index, nil, nil, body)
+            else
+                local okC, made = pcall(CreateMacro, name, MIRROR_ICON, body, nil)
+                if not okC or not made then
+                    mirror.note = "could not create the macro (are all 120 general macro slots full?)"
+                    return
+                end
+            end
+        elseif index > 0 then
+            pcall(DeleteMacro, index)      -- a shorter save needs fewer macros
+        end
+    end
+    mirror.wrote = #s
+    mirror.note = #s .. " characters in " .. n .. (n == 1 and " macro" or " macros")
+end
+
+persistSoon = function()
+    if db and not db.macroMirror and not mirror.hadSV and not hinted and mirror.ready then
+        hinted = true
+        say("heads up: the beta client forgets addon settings when the game restarts. Tick \"Keep settings in a macro\" in /fcdm to keep this setup.")
+    end
+    if mirrorDirty then return end
+    mirrorDirty = true
+    if C_Timer and C_Timer.After then C_Timer.After(1, writeMirror) else writeMirror() end
+end
+
+-- Called at login and again once the macro list has certainly loaded.
+-- Returns true when settings were restored from the macro.
+local function mirrorLogin(final)
+    if mirror.ready then return false end
+    local stored = readMirror()
+    if stored then
+        mirror.found = #stored
+        db.macroMirror = true                       -- the macro existing is the opt-in
+        if not mirror.hadSV then mirror.restored = applySettings(stored) end
+    end
+    if stored or final then mirror.ready = true end
+    return stored ~= nil and mirror.restored
+end
+
+function ForeverCDM_SetMacroMirror(on)
+    db.macroMirror = on and true or false
+    if on then
+        persistSoon()
+    elseif InCombatLockdown and InCombatLockdown() then
+        say("the settings macro will be removed when combat ends.")
+        mirror.deleteAfterCombat = true
+    else
+        deleteMirror()
+        mirror.note = "off; macro removed"
+    end
+end
+
 -- Shared with the config window.
 ForeverCDM = ForeverCDM or {}
+function ForeverCDM.Persist() persistSoon() end
+function ForeverCDM.SpellRank(id) return rankText[id] end
+function ForeverCDM.RankNumber(id) return rankNumber(id) end
 function ForeverCDM.GetDB() return db end
 function ForeverCDM.Refresh() refreshAll() end
 function ForeverCDM.SpellName(id) return spellName(id) end
@@ -461,11 +734,31 @@ function ForeverCDM.Auto() return autoPopulate() end
 
 -- Events ---------------------------------------------------------------------------
 
+local RESTORED_MSG = "the client did not load saved settings (beta bug), so they were restored from your settings macro."
+
+-- The macro list can arrive after PLAYER_LOGIN on a cold start. Until the mirror
+-- has been read (or is known to be absent) nothing is written to it.
+function lateMirror(final)
+    if mirror.ready then return end
+    if mirrorLogin(final) then
+        say(RESTORED_MSG)
+        refreshAll()
+        if ForeverCDM_InitMinimap then ForeverCDM_InitMinimap() end
+        if ForeverCDM_RefreshConfig then ForeverCDM_RefreshConfig() end
+    end
+end
+
 local ev = CreateFrame("Frame")
 ev:RegisterEvent("PLAYER_LOGIN")
+ev:RegisterEvent("UPDATE_MACROS")     -- from file load, so an early firing is not missed
 ev:SetScript("OnEvent", function(self, event, ...)
     if event == "PLAYER_LOGIN" then
+        -- Did the client hand us saved settings? On the beta it never does.
+        mirror.hadSV = type(ForeverCDMDB) == "table" and next(ForeverCDMDB) ~= nil
         ensureDB()
+        -- If UPDATE_MACROS already fired, the macro list is loaded and this read is final.
+        if mirrorLogin(mirror.macrosSeen) then say(RESTORED_MSG) end
+        buildRankIndex()
         newRow("cds", "Cooldowns")
         newRow("utilities", "Utilities")
         newRow("buffs", "Buffs")
@@ -475,15 +768,30 @@ ev:SetScript("OnEvent", function(self, event, ...)
         self:RegisterUnitEvent("UNIT_AURA", "player")
         self:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
         self:RegisterEvent("SPELLS_CHANGED")
+        self:RegisterEvent("PLAYER_LOGOUT")
+        self:RegisterEvent("PLAYER_REGEN_ENABLED")
+        -- Still waiting for the macro list: UPDATE_MACROS will say when it has
+        -- arrived. The timer only covers a client where that event never fires.
+        if not mirror.ready and C_Timer and C_Timer.After then C_Timer.After(15, function() lateMirror(true) end) end
         local ver = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, "Version") or "?"
         say("v%s loaded. /fcdm opens settings.", tostring(ver))
+        if ForeverCDM_InitMinimap then ForeverCDM_InitMinimap() end
     elseif event == "UNIT_AURA" then
         onAuraEvent(...)
         updateBuffs()
     elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
         onPlayerCast(...)
         updateBuffs()
+    elseif event == "PLAYER_LOGOUT" then
+        writeMirror()        -- flush anything still waiting on the debounce
+    elseif event == "UPDATE_MACROS" then
+        mirror.macrosSeen = true
+        if db then lateMirror(true) end
+    elseif event == "PLAYER_REGEN_ENABLED" then
+        if mirror.deleteAfterCombat then mirror.deleteAfterCombat = nil deleteMirror() end
+        if mirror.afterCombat then mirror.afterCombat = nil writeMirror() end
     elseif event == "SPELLS_CHANGED" then
+        buildRankIndex()
         refreshAll()
         if ForeverCDM_RefreshConfig then ForeverCDM_RefreshConfig() end
     else
@@ -505,9 +813,11 @@ local HELP = {
     "/fcdm auto              add every spellbook spell that has a cooldown",
     "/fcdm list              show what is tracked",
     "/fcdm unlock | lock     drag the rows, then lock",
-    "/fcdm size <px>         icon size (default 36)   /fcdm spacing <px>",
+    "/fcdm size [bar] <px>   icon size, all bars or one of cds|utility|buffs. Same for /fcdm spacing",
+    "/fcdm mirror [on|off]   keep settings in a macro, because the beta client forgets them on restart",
     "/fcdm hideready on|off  hide cooldown icons while ready",
     "/fcdm names on|off      show spell names under icons",
+    "/fcdm minimap           show or hide the minimap button",
     "/fcdm reset             back to defaults",
 }
 
@@ -557,10 +867,38 @@ SlashCmdList.FOREVERCDM = function(msg)
         if ForeverCDM_ToggleConfig then ForeverCDM_ToggleConfig() else say("config window not loaded.") end
 
     elseif cmd == "size" or cmd == "spacing" then
-        local n = tonumber(rest)
-        if not n then say("usage: /fcdm %s <pixels>", cmd) return end
-        db[cmd] = math.max(cmd == "size" and 12 or 0, math.min(cmd == "size" and 96 or 30, n))
+        -- "/fcdm size 40" sets every bar; "/fcdm size buffs 30" sets one.
+        local which, value = rest:match("^(%a+)%s+(%-?%d+)$")
+        local n = tonumber(value or rest)
+        local alias = { cds = "cds", cd = "cds", cooldowns = "cds", utility = "utilities", utilities = "utilities",
+                        util = "utilities", buffs = "buffs", buff = "buffs" }
+        local key = which and alias[strlower(which)]
+        if not n or (which and not key) then
+            say("usage: /fcdm %s [cds|utility|buffs] <pixels>", cmd)
+            return
+        end
+        n = math.max(cmd == "size" and 12 or 0, math.min(cmd == "size" and 96 or 30, n))
+        local field = cmd == "size" and "rowSize" or "rowSpacing"
+        for _, k in ipairs(BAR_KEYS) do
+            if not key or k == key then db[field][k] = n end
+        end
         refreshAll()
+        if ForeverCDM_RefreshConfig then ForeverCDM_RefreshConfig() end
+
+    elseif cmd == "mirror" then
+        -- State of the saved-settings workaround; see the settings-mirror section.
+        if rest == "on" or rest == "off" then
+            ForeverCDM_SetMacroMirror(rest == "on")
+            if ForeverCDM_RefreshConfig then ForeverCDM_RefreshConfig() end
+        end
+        say("settings macro is %s. Saved settings at login %s; the macro held %d characters at login and %s. Last write: %s.",
+            db.macroMirror and "ON" or "OFF (turn on with /fcdm mirror on)",
+            mirror.hadSV and "LOADED, so the macro was not needed" or "were EMPTY (beta bug)",
+            mirror.found, mirror.restored and "was restored" or "was not applied", mirror.note)
+
+    elseif cmd == "store" then
+        -- What the settings macro runs if someone clicks it.
+        say("this macro holds your Forever Cooldown Manager setup, because the beta client forgets addon settings. It is read automatically at login; clicking it does nothing. Turn it off with /fcdm mirror off.")
 
     elseif cmd == "hideready" or cmd == "names" then
         local on = rest == "on" or rest == "1" or rest == "true"
@@ -624,6 +962,13 @@ SlashCmdList.FOREVERCDM = function(msg)
                 if type(data) == "table" and not secret(data.spellId) and data.spellId == id then hit = data end
             end, true)
             say("  ForEachAura HELPFUL -> ok=%s walked=%d match=%s", tostring(okW), n, hit and desc(hit) or tostring(okW and "none" or errW):sub(1, 120))
+        end
+
+    elseif cmd == "minimap" then
+        if ForeverCDM_SetMinimapShown then
+            ForeverCDM_SetMinimapShown(db.minimap.hide)   -- hide=true means show it now
+            say("minimap button %s.", db.minimap.hide and "hidden" or "shown")
+            if ForeverCDM_RefreshConfig then ForeverCDM_RefreshConfig() end
         end
 
     elseif cmd == "auradebug" then
