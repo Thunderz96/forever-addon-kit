@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.5 (2026-09-18)
+- Buffs you cast yourself are now followed through combat by your own cast event, which stays
+  readable when auras do not. The timer uses a duration the addon measured out of combat, so a
+  buff first applied mid-fight shows a real countdown instead of a "?". Other ranks of the same
+  spell are matched by name. (Approach seen in Pirson's SealTimersForever.)
+- Secrecy is checked per spell (`C_Secrets.ShouldSpellAuraBeSecret`) instead of globally. A buff
+  the client never hides stays exact in combat. (API usage seen in Bodify's BetterBlizzFrames.)
+- `/fcdm probe <spell>` prints the spell's base secrecy level and the learned duration.
+- New regression test file for the above.
+
 ## 0.3.4 (2026-09-17)
 - Aura lookup is protected: in combat the client throws on every aura read, which previously burned
   the client's 100-error cap.

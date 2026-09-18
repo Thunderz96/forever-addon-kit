@@ -2,7 +2,7 @@
 ## Title: |cffd2621fForever|r Compat + Settings Loader
 ## Notes: Retail API wrappers the Forever beta client lacks, a way to place actions without dragging, and a loader that restores addon settings the client never reads back.
 ## Author: Thunderz
-## Version: 0.1.1
+## Version: 0.1.2
 
 Compat.lua
 ActionPlace.lua

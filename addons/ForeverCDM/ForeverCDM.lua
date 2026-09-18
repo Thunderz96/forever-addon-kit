@@ -62,6 +62,7 @@ local function ensureDB()
     -- Migration for existing profiles: never replace existing ordered lists or positions.
     db.utilities = db.utilities or {}
     db.pos.utilities = db.pos.utilities or { "CENTER", 0, -220 }
+    db.buffDurations = db.buffDurations or {}   -- spellID -> seconds, learned out of combat
 end
 
 -- Spell helpers ---------------------------------------------------------------
@@ -221,10 +222,25 @@ local function updateCooldowns(key)
     end
 end
 
+-- Is THIS spell's aura secret right now? The client answers per spell
+-- (C_Secrets.ShouldSpellAuraBeSecret), which is finer than the global
+-- ShouldAurasBeSecret: a buff Blizzard marks NeverSecret stays readable in
+-- combat, so a failed read there means "not up", not "unknowable".
+-- Technique seen in Bodify/BetterBlizzFrames (forever/modules/auras.lua).
+local function spellAuraSecret(id, globalRestricted)
+    if not globalRestricted then return false end
+    if C_Secrets and C_Secrets.ShouldSpellAuraBeSecret then
+        local ok, s = pcall(C_Secrets.ShouldSpellAuraBeSecret, id)
+        if ok and not secret(s) and s == false then return false end
+    end
+    return true
+end
+
 local function updateBuffs()
-    local restricted = C_Secrets and C_Secrets.ShouldAurasBeSecret and C_Secrets.ShouldAurasBeSecret()
+    local globalRestricted = C_Secrets and C_Secrets.ShouldAurasBeSecret and C_Secrets.ShouldAurasBeSecret()
     for _, f in ipairs(icons.buffs) do
         if f:IsShown() and f.spellID then
+            local restricted = spellAuraSecret(f.spellID, globalRestricted)
             -- In combat this call THROWS rather than returning nil, so it must be
             -- protected or it burns the client's 100-error cap in under a minute.
             local okA, a = pcall(C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID or function() end, f.spellID)
@@ -236,6 +252,7 @@ local function updateBuffs()
                 if ok and not secret(knownAura) then a = knownAura end
             end
             if a then
+                f.castAt = nil   -- real aura data beats our cast-based estimate
                 if not secret(a.auraInstanceID) and a.auraInstanceID ~= nil then
                     f.auraInstanceID = a.auraInstanceID
                 end
@@ -254,6 +271,10 @@ local function updateBuffs()
                     end
                 elseif dur and dur > 0 then
                     f.cd:SetCooldown(exp - dur, dur)
+                    -- Remember how long this buff lasts. In combat the aura is
+                    -- unreadable, but our own cast event plus this number is
+                    -- enough to draw an honest timer (see onPlayerCast).
+                    db.buffDurations[f.spellID] = dur
                 else
                     f.cd:Clear()
                 end
@@ -265,10 +286,23 @@ local function updateBuffs()
                 -- object handed to the widget before combat keeps ticking on its
                 -- own. Only the UNIT_AURA payload (see OnAuraEvent) can tell us it
                 -- dropped; when it does, f.combatRemoved is set.
+                local learned = db.buffDurations[f.spellID]
+                if f.castAt and learned and GetTime() > f.castAt + learned then
+                    f.castAt = nil
+                    f.combatRemoved = true        -- our own timer says it ran out
+                end
                 if f.combatRemoved then
                     f:SetAlpha(0.25)
                     f.icon:SetDesaturated(true)
                     f.cd:Clear()
+                    f.count:SetText("")
+                elseif f.castAt then
+                    -- We saw ourselves cast it this fight (onPlayerCast). Start
+                    -- time is our own clock and the length is one we measured
+                    -- out of combat, so neither number is secret.
+                    f:SetAlpha(0.85)
+                    f.icon:SetDesaturated(false)
+                    if learned then f.cd:SetCooldown(f.castAt, learned) else f.cd:Clear() end
                     f.count:SetText("")
                 elseif f.auraInstanceID then
                     f:SetAlpha(0.85)              -- known before combat, unverifiable now
@@ -283,6 +317,7 @@ local function updateBuffs()
             else
                 f.combatRemoved = nil
                 f.auraInstanceID = nil
+                f.castAt = nil
                 f:SetAlpha(0.25)
                 f.icon:SetDesaturated(true)
                 f.cd:Clear()
@@ -344,6 +379,28 @@ local function onAuraEvent(unit, info)
     end
 end
 ForeverCDM_AuraDebug = function(n) auraDebugLeft = n or 6 end
+
+-- Our own casts stay readable in combat even though our auras do not, so a
+-- tracked buff we cast ourselves can be followed by its cast event instead.
+-- Matching by name as well as ID covers other ranks of the same spell.
+-- Technique seen in Pirson-s-Addons/SealTimersForever (MIT).
+local function onPlayerCast(unit, _, spellID)
+    if unit ~= "player" or spellID == nil or secret(spellID) then return end
+    local castName
+    for _, f in ipairs(icons.buffs) do
+        if f.spellID then
+            local hit = f.spellID == spellID
+            if not hit then
+                castName = castName or spellName(spellID)
+                hit = castName == spellName(f.spellID)
+            end
+            if hit then
+                f.castAt = GetTime()
+                f.combatRemoved = nil
+            end
+        end
+    end
+end
 
 local function refreshAll()
     for _, key in ipairs(BAR_KEYS) do
@@ -416,11 +473,15 @@ ev:SetScript("OnEvent", function(self, event, ...)
         self:RegisterEvent("SPELL_UPDATE_COOLDOWN")
         self:RegisterEvent("SPELL_UPDATE_CHARGES")
         self:RegisterUnitEvent("UNIT_AURA", "player")
+        self:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
         self:RegisterEvent("SPELLS_CHANGED")
         local ver = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, "Version") or "?"
         say("v%s loaded. /fcdm opens settings.", tostring(ver))
     elseif event == "UNIT_AURA" then
         onAuraEvent(...)
+        updateBuffs()
+    elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
+        onPlayerCast(...)
         updateBuffs()
     elseif event == "SPELLS_CHANGED" then
         refreshAll()
@@ -527,6 +588,15 @@ SlashCmdList.FOREVERCDM = function(msg)
         end
         local okR, restricted = pcall(function() return C_Secrets and C_Secrets.ShouldAurasBeSecret and C_Secrets.ShouldAurasBeSecret() end)
         say("probe %s (%d) | combat=%s aurasSecret=%s", spellName(id), id, tostring(InCombatLockdown()), tostring(okR and restricted))
+        if C_Secrets and C_Secrets.GetSpellAuraSecrecy then
+            -- Per-spell secrecy: a NeverSecret buff should stay readable in combat.
+            local levels = { [0] = "NeverSecret", [1] = "AlwaysSecret", [2] = "ContextuallySecret" }
+            local okS, lvl = pcall(C_Secrets.GetSpellAuraSecrecy, id)
+            local okN, now = pcall(C_Secrets.ShouldSpellAuraBeSecret, id)
+            say("  aura secrecy: base=%s secretNow=%s | learned duration=%s",
+                (okS and not secret(lvl)) and (levels[lvl] or tostring(lvl)) or "?",
+                (okN and not secret(now)) and tostring(now) or "?", tostring(db.buffDurations[id]))
+        end
         local ok1, a = pcall(C_UnitAuras.GetPlayerAuraBySpellID, id)
         say("  GetPlayerAuraBySpellID -> ok=%s %s", tostring(ok1), desc(a))
         local inst = (ok1 and type(a) == "table" and not secret(a.auraInstanceID)) and a.auraInstanceID or nil

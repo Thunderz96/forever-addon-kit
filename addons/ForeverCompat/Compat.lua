@@ -182,4 +182,14 @@ if TogglePlayerSpellsFrame then
     define("ToggleTalentFrame", function() TogglePlayerSpellsFrame() end)
 end
 
+if C_GuildInfo then
+    define("GuildRoster", C_GuildInfo.GuildRoster)
+end
+if C_QuestLog then
+    define("IsQuestFlaggedCompleted", C_QuestLog.IsQuestFlaggedCompleted)
+end
+if C_FriendList then
+    define("SendWho", C_FriendList.SendWho)
+end
+
 ForeverCompat_Loaded = true

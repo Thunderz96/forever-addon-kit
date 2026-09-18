@@ -14,7 +14,7 @@ end
 
 local secretValue = {}
 local icons = { cds = {}, buffs = {} }
-local db = { hideReady = true }
+local db = { hideReady = true, buffDurations = {} }
 local function secret(value) return value == secretValue end
 local cooldownInfo, spellDuration, auraDuration
 local spellCalls, auraCalls = 0, 0

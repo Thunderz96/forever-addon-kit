@@ -28,6 +28,7 @@ Tests run under Lua 5.2+ with no game client:
 ```
 lua tests/test_secret_duration.lua ForeverCDM.lua
 lua tests/test_runtime.lua
+lua tests/test_cast_tracking.lua
 ```
 Releases are built by the GitHub Actions workflow on any `v*` tag. Findings about the Forever client
 that shaped this addon live in [forever-addon-kit](https://github.com/Thunderz96/forever-addon-kit).
