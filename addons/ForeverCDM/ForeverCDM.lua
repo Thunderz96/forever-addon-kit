@@ -61,7 +61,7 @@ local function ensureDB()
     end
     -- Migration for existing profiles: never replace existing ordered lists or positions.
     db.utilities = db.utilities or {}
-    db.pos.utilities = db.pos.utilities or { "CENTER", 0, -320 }
+    db.pos.utilities = db.pos.utilities or { "CENTER", 0, -220 }
 end
 
 -- Spell helpers ---------------------------------------------------------------
@@ -225,8 +225,10 @@ local function updateBuffs()
     local restricted = C_Secrets and C_Secrets.ShouldAurasBeSecret and C_Secrets.ShouldAurasBeSecret()
     for _, f in ipairs(icons.buffs) do
         if f:IsShown() and f.spellID then
-            local a = C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID and C_UnitAuras.GetPlayerAuraBySpellID(f.spellID)
-            if secret(a) then a = nil end
+            -- In combat this call THROWS rather than returning nil, so it must be
+            -- protected or it burns the client's 100-error cap in under a minute.
+            local okA, a = pcall(C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID or function() end, f.spellID)
+            if not okA or secret(a) or (issecrettable and issecrettable(a)) then a = nil end
             -- A spell-ID lookup may stop identifying an aura during combat. Only
             -- reuse an instance we previously identified; never guess its spell.
             if not a and restricted and f.auraInstanceID and C_UnitAuras.GetAuraDataByAuraInstanceID then
@@ -310,6 +312,7 @@ local function onAuraEvent(unit, info)
         -- Measured 2026-09-17: in combat these are secret tables; indexing one throws.
         local firstRemoved = readable(info.removedAuraInstanceIDs) and info.removedAuraInstanceIDs[1]
         local firstAdded = readable(info.addedAuras) and info.addedAuras[1]
+        if firstAdded ~= nil and not readable(firstAdded) then firstAdded = nil end
         say("UNIT_AURA combat=%s full=%s added=%s updated=%s removed=%s | removed[1]=%s added[1].spellId=%s",
             tostring(InCombatLockdown()), tostring(full), n(info.addedAuras), n(info.updatedAuraInstanceIDs), n(info.removedAuraInstanceIDs),
             firstRemoved == nil and "nil" or (secret(firstRemoved) and "S" or tostring(firstRemoved)),
@@ -329,7 +332,7 @@ local function onAuraEvent(unit, info)
     local added = info.addedAuras
     if type(added) == "table" and not (issecrettable and issecrettable(added)) then
         for _, a in ipairs(added) do
-            if type(a) == "table" and not secret(a.spellId) then
+            if type(a) == "table" and not (issecrettable and issecrettable(a)) and not secret(a.spellId) then
                 for _, f in ipairs(icons.buffs) do
                     if f.spellID == a.spellId then
                         f.combatRemoved = nil
@@ -414,7 +417,8 @@ ev:SetScript("OnEvent", function(self, event, ...)
         self:RegisterEvent("SPELL_UPDATE_CHARGES")
         self:RegisterUnitEvent("UNIT_AURA", "player")
         self:RegisterEvent("SPELLS_CHANGED")
-        say("v0.3.0 loaded. /fcdm opens settings.")
+        local ver = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, "Version") or "?"
+        say("v%s loaded. /fcdm opens settings.", tostring(ver))
     elseif event == "UNIT_AURA" then
         onAuraEvent(...)
         updateBuffs()
@@ -494,7 +498,7 @@ SlashCmdList.FOREVERCDM = function(msg)
     elseif cmd == "size" or cmd == "spacing" then
         local n = tonumber(rest)
         if not n then say("usage: /fcdm %s <pixels>", cmd) return end
-        db[cmd] = math.max(cmd == "size" and 12 or 0, math.min(96, n))
+        db[cmd] = math.max(cmd == "size" and 12 or 0, math.min(cmd == "size" and 96 or 30, n))
         refreshAll()
 
     elseif cmd == "hideready" or cmd == "names" then

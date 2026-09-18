@@ -39,7 +39,9 @@ BETA_SV = os.path.join(BETA, "WTF", "Account", "<BETA_ACCOUNT>", "SavedVariables
 RETAIL_SV = os.path.join(ROOT, "_retail_", "WTF", "Account", "<RETAIL_ACCOUNT>", "SavedVariables")
 HERE = os.path.dirname(os.path.abspath(__file__))
 PROJECT = os.path.dirname(HERE)
-COMPAT_SRC = os.path.join(PROJECT, "ForeverCompat")
+COMPAT_SRC = next((c for c in (os.path.join(PROJECT, "addons", "ForeverCompat"),
+                               os.path.join(PROJECT, "ForeverCompat")) if os.path.isdir(c)),
+                  os.path.join(PROJECT, "ForeverCompat"))
 COMPAT_DST = os.path.join(BETA, "Interface", "AddOns", "!!ForeverCompat")
 BACKUPS = os.path.join(PROJECT, "sv-backups")
 LOG = os.path.join(HERE, "sv_bridge.log")
@@ -68,6 +70,7 @@ def log(msg):
         f.write(line + "\n")
 
 
+# Adjust if luac lives elsewhere; without it a brace-balance check is used instead.
 LUAC = os.path.expandvars(r"%LOCALAPPDATA%\Programs\Lua\bin\luac.exe")
 
 

@@ -54,7 +54,7 @@ end
 
 local function blocked()
     if InCombatLockdown() then
-        say("not in combat. Action slots can only be changed out of combat.")
+        say("in combat: action slots can only be changed out of combat.")
         return true
     end
     return false

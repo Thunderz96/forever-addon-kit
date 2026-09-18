@@ -1,4 +1,4 @@
-﻿addon,folders,files,api_refs,missing_names,missing_uses,compat_pct,top_missing
+addon,folders,files,api_refs,missing_names,missing_uses,compat_pct,top_missing
 TwintopInsanityBar,1,128,1533,0,0,100.0,
 NorthernSkyRaidTools,2,105,1001,0,0,100.0,
 Leatrix_Plus,1,5,820,0,0,100.0,
@@ -47,7 +47,6 @@ MDT_Legacy,1,82,13,0,0,100.0,
 !BugGrabber,1,1,10,0,0,100.0,
 AutoCombatLogger,1,17,6,0,0,100.0,
 MinimapButtonButton,1,23,3,0,0,100.0,
-.claude,1,0,0,0,0,100.0,
 HandyNotes,4,137,818,1,1,99.9,IsCosmeticItem x1
 APR,1,120,652,1,1,99.8,C_Timer.Cancel x1
 ClassCodex,1,64,516,1,1,99.8,C_SpellBook.GetSpellInfo x1

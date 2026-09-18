@@ -40,7 +40,7 @@ not inferred from patch notes.
   [WickCore](https://github.com/Wicksmods/WickCore) (platform library for Forever addons).
 - No addon site (CurseForge, Wago, WoWInterface) has a Forever game flavour yet; "Forever" in listing names is author-chosen.
 
-`data/forever_api.json` is the captured API surface: 6,046 global functions, 11,417 named frames,
+`data/forever_api.json` is the captured API surface: 6,045 global functions, 11,417 named frames,
 269 namespaces with their functions. `tools/api_scan.py` diffs any addon against it.
 
 ## Addons
@@ -48,7 +48,7 @@ not inferred from patch notes.
 ### ForeverCDM
 A cooldown manager that needs no Blizzard CDM data. Three icon rows (cooldowns, utilities, buffs)
 read straight from the spellbook and `C_UnitAuras`. `/fcdm` opens a config window with a spellbook
-list, tick boxes per row, ordering, size and spacing. Display only. Tests in `tests/` run with plain Lua:
+list, tick boxes per row, ordering, size and spacing. Display only. Tests in `tests/` run with Lua 5.2+ (tested on 5.4):
 
 ```
 lua tests/test_secret_duration.lua ForeverCDM.lua
@@ -71,7 +71,8 @@ with positions. `tools/fb_extract.py` turns the SavedVariables payload into CSV/
 the diagnostic commands used for the findings above (`/fb bugs`, `/fb frame`, `/fb cdm`, `/fb help`).
 
 ### FBSVTest
-The four-line test addon that proved the saved-variables bug. Kept for reproduction.
+The small test addon that proved the saved-variables bug: it logs a pre-seeded global at every lifecycle
+point from main chunk to logout. Kept for reproduction.
 
 ## Tools
 
@@ -87,8 +88,10 @@ The four-line test addon that proved the saved-variables bug. Kept for reproduct
 | `read_bugs.py` | Print BugGrabber's errors from disk. |
 | `fb_extract.py`, `Sync-ForeverBeacon.ps1` | ForeverBeacon extraction and scheduled archive. |
 
-Paths at the top of each tool point at one Windows install; `<RETAIL_ACCOUNT>` and `<BETA_ACCOUNT>`
-are your WTF account folder names. Edit before use.
+The tools find the kit's own files (`data/forever_api.json`, `addons/ForeverCompat`) relative to
+themselves. What you must edit is the WoW install path at the top of each script, and the
+`<RETAIL_ACCOUNT>` / `<BETA_ACCOUNT>` placeholders, which are your WTF account folder names.
+`luac` is optional (used to validate saved files before copying); adjust its path in `sv_bridge.py`.
 
 ## What is deliberately not here
 Patched copies of third-party addons (run the patchers on your own copy), personal settings seeds,

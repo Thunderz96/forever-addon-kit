@@ -46,7 +46,7 @@ what we build. Tick things off in the Notes column as the beta answers them.
 1. Watch or read the Q&A (item 5). Post the addon question beforehand.
 2. Install, character select, AddOns button (item 1).
 3. Log in, wait 15 s, `/fb`, `/fb flush`, `/reload`. The sync task picks it up within 30 minutes, or run it by hand (items 2, 3, 4, 18).
-4. Send me `probe.csv`, `errors.csv` and `events.csv`. I fix the TOC and any broken collector the same day.
+4. Open `probe.csv`, `errors.csv` and `events.csv` from the newest extract: set the TOC interface number from `probe`, and fix any collector that hit a missing call.
 5. Then play. Open every new panel once and `/fb frames` (item 6). Sit at a campfire (item 7). Hover every trinket (item 8). Everything else accumulates on its own.
 
 ## What the sync task does on its own

@@ -241,6 +241,9 @@ ns.On("PLAYER_TALENT_UPDATE", bookSoon)
 
 -- Player auras: campfire buffs, food buffs, Legacy perks if they show as auras.
 local function scanAuras()
+    -- In combat every aura read throws on this client; skip instead of
+    -- filing the same error on every UNIT_AURA.
+    if C_Secrets and C_Secrets.ShouldAurasBeSecret and C_Secrets.ShouldAurasBeSecret() then return end
     local db = ns.DB()
     local function note(spellID, name, duration, source, isHelpful)
         -- Aura fields can be secret in combat on this client; a secret spell

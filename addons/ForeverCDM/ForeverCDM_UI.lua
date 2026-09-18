@@ -19,7 +19,7 @@ local function spellbookSpells()
                     local item = C_SpellBook.GetSpellBookItemInfo(i, bank)
                     if item and item.spellID and not item.isPassive and not item.isOffSpec and not seen[item.spellID] then
                         seen[item.spellID] = true
-                        out[#out + 1] = { id = item.spellID, name = item.name or CDM.SpellName(item.spellID), tab = info.name }
+                        out[#out + 1] = { id = item.spellID, name = item.name or CDM.SpellName(item.spellID), tab = info.name or "?" }
                     end
                 end
             end

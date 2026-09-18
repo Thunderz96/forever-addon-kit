@@ -19,7 +19,17 @@ import sys
 from collections import defaultdict
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-BASELINE = os.path.join(os.path.dirname(HERE), "ForeverBeacon", "data", "api-baseline", "forever_api.json")
+def _find_baseline():
+    """Kit layout (data/forever_api.json) or working-tree layout."""
+    root = os.path.dirname(HERE)
+    for cand in (os.path.join(root, "data", "forever_api.json"),
+                 os.path.join(root, "ForeverBeacon", "data", "api-baseline", "forever_api.json")):
+        if os.path.exists(cand):
+            return cand
+    return cand
+
+
+BASELINE = _find_baseline()
 
 LUA_BUILTINS = set("""assert collectgarbage date error gcinfo getfenv getmetatable ipairs loadstring next pairs
 pcall print rawequal rawget rawset select setfenv setmetatable time tonumber tostring type unpack xpcall

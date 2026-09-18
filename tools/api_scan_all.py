@@ -21,7 +21,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import api_scan as A  # noqa: E402
 
 DEFAULT_DIR = r"C:\Program Files (x86)\World of Warcraft\_retail_\Interface\AddOns"
-COMPAT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "ForeverCompat", "Compat.lua")
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+COMPAT = next((c for c in (os.path.join(_ROOT, "addons", "ForeverCompat", "Compat.lua"),
+                           os.path.join(_ROOT, "ForeverCompat", "Compat.lua")) if os.path.exists(c)), "")
 
 
 def families(names):

@@ -17,8 +17,14 @@ import sys
 from collections import defaultdict
 
 ADDONS = r"C:\Program Files (x86)\World of Warcraft\_classic_beta_\Interface\AddOns"
-BASE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "ForeverBeacon", "data")
-API = json.load(open(os.path.join(BASE, "api-baseline", "forever_api.json"), encoding="utf-8"))
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Kit layout keeps the baseline at data/forever_api.json; the working tree under ForeverBeacon/data.
+_API_PATH = os.path.join(_ROOT, "data", "forever_api.json")
+BASE = os.path.join(_ROOT, "data")
+if not os.path.exists(_API_PATH):
+    BASE = os.path.join(_ROOT, "ForeverBeacon", "data")
+    _API_PATH = os.path.join(BASE, "api-baseline", "forever_api.json")
+API = json.load(open(_API_PATH, encoding="utf-8"))
 FRAMES = set(API["frames"])
 FUNCS = set(API["functions"])
 NS = set(API["namespaces"])

@@ -86,7 +86,7 @@ end
 function encodeValue(v, out)
     -- Secret values of ANY type (number, boolean, string) cannot be tested,
     -- compared or formatted on restricted clients. They become null.
-    if issecretvalue and issecretvalue(v) then
+    if (issecretvalue and issecretvalue(v)) or (issecrettable and issecrettable(v)) then
         out[#out + 1] = "null"
         return
     end

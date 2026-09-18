@@ -10,7 +10,7 @@
 -- Blizzard's own Blizzard_Deprecated wrappers.
 --
 -- Found by scanning addon source against the API surface Forever Beacon
--- captured from the live client (Forever\tools\api_scan.py).
+-- captured from the live client (tools/api_scan.py).
 
 local function define(name, fn)
     if _G[name] == nil and type(fn) == "function" then _G[name] = fn end
@@ -21,7 +21,13 @@ if C_Item then
     define("GetItemInfo",         C_Item.GetItemInfo)
     define("GetItemInfoInstant",  C_Item.GetItemInfoInstant)
     define("GetItemQualityColor", C_Item.GetItemQualityColor)
-    define("GetItemIcon",         C_Item.GetItemIconByID)
+    -- GetItemIcon took a name/link/ID; the C_ form takes an ID only. Resolve first.
+    if C_Item.GetItemIconByID and C_Item.GetItemInfoInstant then
+        define("GetItemIcon", function(item)
+            local id = tonumber(item) or (C_Item.GetItemInfoInstant(item))
+            return id and C_Item.GetItemIconByID(id) or nil
+        end)
+    end
     define("GetItemCount",        C_Item.GetItemCount)
     define("GetItemSpell",        C_Item.GetItemSpell)
     define("GetItemCooldown",     C_Item.GetItemCooldown)
@@ -92,7 +98,10 @@ if C_Spell then
         define("GetSpellCooldown", function(spell)
             local c = C_Spell.GetSpellCooldown(spell)
             if not c then return nil end
-            return c.startTime, c.duration, c.isEnabled and 1 or 0, c.modRate
+            -- isEnabled can be secret in combat; a boolean test on it throws.
+            local enabled = c.isEnabled
+            if not (issecretvalue and issecretvalue(enabled)) then enabled = enabled and 1 or 0 end
+            return c.startTime, c.duration, enabled, c.modRate
         end)
     end
     if C_Spell.GetSpellCharges then

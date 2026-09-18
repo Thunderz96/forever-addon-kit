@@ -63,6 +63,8 @@ def main():
     print(f"imported {n} files with fresh timestamps; stale .bak/.old and cache.md5 removed")
     for f in ("EllesmereUI.lua", "Bartender4.lua", "Details.lua"):
         p = os.path.join(DST_ACCT, "SavedVariables", f)
+        if not os.path.exists(p):
+            continue
         print(f"  {os.path.getsize(p) // 1024:>5} KB  {time.strftime('%H:%M:%S', time.localtime(os.path.getmtime(p)))}  {f}"
               f"  (bak present: {os.path.exists(p + '.bak')})")
 

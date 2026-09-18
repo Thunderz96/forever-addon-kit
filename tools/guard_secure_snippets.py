@@ -138,7 +138,7 @@ def main(argv):
             for name in names:
                 if name.lower().endswith(".lua"):
                     n, status = patch_file(os.path.join(dirpath, name), dry)
-                    if n or status == "already":
+                    if n:
                         print(f"{status:<12} {n:>3} sites  {folder}\\{name}")
 
 

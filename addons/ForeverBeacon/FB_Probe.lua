@@ -77,7 +77,8 @@ local function probeKeywordGlobals(p)
             if k then
                 local t = type(value)
                 local rec = { type = t, keyword = k }
-                if t == "table" and type(value.GetObjectType) == "function" then
+                local okF, isFrame = pcall(function() return t == "table" and type(value.GetObjectType) == "function" end)
+                if okF and isFrame then
                     local ok, ot = pcall(value.GetObjectType, value)
                     rec.type = ok and ("frame:" .. tostring(ot)) or "frame"
                 elseif t == "string" or t == "number" or t == "boolean" then
@@ -173,8 +174,11 @@ local function probeGlobals(p)
             local t = type(value)
             if t == "function" then
                 fns[#fns + 1] = name
-            elseif t == "table" and type(rawget(value, 0)) == "userdata" and #frames < 12000 then
-                frames[#frames + 1] = name
+            elseif t == "table" and #frames < 12000 then
+                -- rawget on a secret table throws; a pcall keeps one bad global
+                -- from aborting the whole probe.
+                local okU, isUserdata = pcall(function() return type(rawget(value, 0)) == "userdata" end)
+                if okU and isUserdata then frames[#frames + 1] = name end
             end
         end
     end

@@ -1,6 +1,6 @@
 # Forever Beacon
 
-**Author:** Thunderz · **Status:** 0.1.0, built 2026-09-15 for the WoW: Forever beta (opens 2026-09-17)
+**Author:** Thunderz · **Status:** 0.3.x, built 2026-09-15; running on the WoW: Forever beta since 2026-09-17 (build 1.60.1.69893, interface 16001)
 
 A Wowhead-Looter-style data harvester. It sits quietly, records everything the
 client shows you, and writes it to SavedVariables. `tools/fb_extract.py` turns
@@ -37,11 +37,9 @@ It only reads, so it stays on the safe side of any addon policy.
 
 ## Install
 
-1. Copy this folder to `<flavor>\Interface\AddOns\ForeverBeacon` where
-   `<flavor>` is whatever the Forever beta installs as (watch for a new
-   `_*_` folder next to `_classic_era_` after the Battle.net install).
-2. If the client says it is out of date, tick **Load out of date AddOns**.
-   The TOC lists guessed interface numbers; the real one is unknown until Thursday.
+1. Copy this folder to `_classic_beta_\Interface\AddOns\ForeverBeacon`.
+2. The TOC lists 16001 first (the real beta interface number). Older numbers are
+   kept so the same folder also loads on Retail and Classic for smoke tests.
 3. Log in. You should see `Forever Beacon: collecting. /fb for status.`
 
 ## In game
