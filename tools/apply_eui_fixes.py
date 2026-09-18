@@ -72,6 +72,80 @@ PATCHES = [
      "    if CharacterStatPane then\n",
      "    local CharacterStatPane = CharacterStatPane or _G.CharacterStatsPane -- " + TAG
      + ": Forever names the pane with an s\n    if CharacterStatPane then\n"),
+    # 8b. Blizzard re-anchors the stats pane every time the sheet opens, so a
+    #     one-time park is undone. Re-park the pane and its scroll boxes on
+    #     each show (and after each stats refresh) and fade them out.
+    ("EllesmereUIBlizzardSkin\\EllesmereUIBlizzardSkin_CharacterSheet.lua",
+     '        CharacterStatPane:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 0, -10000)\n    end\n',
+     '        CharacterStatPane:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 0, -10000)\n    end\n'
+     "    -- " + TAG + ": Blizzard re-anchors the stats pane on show; re-park it every time\n"
+     "    local function ForeverParkStats()\n"
+     "        for _, f in ipairs({ _G.CharacterStatsPane, _G.CharacterStatsPaneScrollBox, _G.CharacterStatsPanePetScrollBox }) do\n"
+     "            if f and not f:IsForbidden() then\n"
+     "                f:ClearAllPoints()\n"
+     '                f:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 0, -10000)\n'
+     "                f:SetAlpha(0)\n"
+     "            end\n"
+     "        end\n"
+     "    end\n"
+     "    local function ForeverParkStatsSoon()\n"
+     "        if C_Timer then C_Timer.After(0, ForeverParkStats) else ForeverParkStats() end\n"
+     "    end\n"
+     "    ForeverParkStats()\n"
+     '    frame:HookScript("OnShow", ForeverParkStatsSoon)\n'
+     '    if PaperDollFrame and PaperDollFrame.HookScript then PaperDollFrame:HookScript("OnShow", ForeverParkStatsSoon) end\n'
+     '    if PaperDollFrame_UpdateStats then hooksecurefunc("PaperDollFrame_UpdateStats", ForeverParkStats) end\n'),
+    # 8c. Forever's sheet is 631 wide (Retail: 540) and parents the sidebar
+    #     tabs to CharacterFrame instead of the right inset EUI parks. Park the
+    #     tabs too, let EUI's side panel use the extra width, and centre the
+    #     title over the equipment half instead of under the panel divider.
+    ("EllesmereUIBlizzardSkin\\EllesmereUIBlizzardSkin_CharacterSheet.lua",
+     "                f:SetAlpha(0)\n            end\n        end\n    end\n    local function ForeverParkStatsSoon()",
+     "                f:SetAlpha(0)\n            end\n        end\n"
+     "        local tabs = _G.PaperDollSidebarTabs\n"
+     "        if tabs and not tabs:IsForbidden() then\n"
+     "            tabs:ClearAllPoints()\n"
+     '            tabs:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 0, -10000)\n'
+     "            tabs:SetAlpha(0)\n"
+     "        end\n"
+     "        local w = frame:GetWidth() or 0\n"
+     "        for _, pn in ipairs({ \"EUI_CharSheet_StatsPanel\", \"EUI_CharSheet_TitlesPanel\", \"EUI_CharSheet_EquipPanel\" }) do\n"
+     "            local panel = _G[pn]\n"
+     "            if panel and w > 560 then panel:SetWidth(w - 345 - 12) end\n"
+     "        end\n"
+     "        if CharacterFrameTitleText and w > 560 then\n"
+     "            CharacterFrameTitleText:ClearAllPoints()\n"
+     '            CharacterFrameTitleText:SetPoint("TOP", frame, "TOPLEFT", 147, -6)\n'
+     "        end\n"
+     "    end\n    local function ForeverParkStatsSoon()"),
+    # 8d. Forever adds a right-pane host (carries the gold vertical divider)
+    #     and a collapse-arrow toggle for it. Neither exists on Retail; fade both.
+    ("EllesmereUIBlizzardSkin\\EllesmereUIBlizzardSkin_CharacterSheet.lua",
+     "        local tabs = _G.PaperDollSidebarTabs\n",
+     "        local host = _G.CharacterFrameRightPaneHost\n"
+     "        if host and not host:IsForbidden() then host:SetAlpha(0) end\n"
+     "        local tog = _G.CharacterFrameRightPaneToggleButton\n"
+     "        if tog and not tog:IsForbidden() then tog:SetAlpha(0) tog:EnableMouse(false) end\n"
+     "        local tabs = _G.PaperDollSidebarTabs\n"),
+    # 8e. Tertiary stats (leech/avoidance/speed) and crests do not exist on
+    #     Forever. Force those sections off regardless of imported settings.
+    ("EllesmereUIBlizzardSkin\\EllesmereUIBlizzardSkin_CharacterSheet.lua",
+     "        for k, v in pairs(defaults) do\n            if EllesmereUIDB[k] == nil then\n                EllesmereUIDB[k] = v\n            end\n        end\n",
+     "        for k, v in pairs(defaults) do\n            if EllesmereUIDB[k] == nil then\n                EllesmereUIDB[k] = v\n            end\n        end\n"
+     "        EllesmereUIDB.showStatCategory_Tertiary = false -- " + TAG + ": stat does not exist on Forever\n"
+     "        EllesmereUIDB.showStatCategory_Crests = false -- " + TAG + "\n"),
+    # 8f. PvP section: honor levels and conquest are Retail systems. One line
+    #     that finds the Honor currency by name (ID may differ from Retail's 1792).
+    ("EllesmereUIBlizzardSkin\\EllesmereUIBlizzardSkin_CharacterSheet.lua",
+     '                    {\n                        name = "Honor Level",\n                        format = "%s",\n                        func = function()\n                            return tostring(UnitHonorLevel and UnitHonorLevel("player") or 0)\n                        end,\n                    },\n                    {\n                        name = "Honor",\n                        format = "%s",\n                        func = function()\n                            local cur = (UnitHonor and UnitHonor("player")) or 0\n                            local max = (UnitHonorMax and UnitHonorMax("player")) or 0\n                            return BreakUpLargeNumbers(cur) .. "/" .. BreakUpLargeNumbers(max)\n                        end,\n                    },\n                    {\n                        name = "Conquest",\n                        format = "%d",\n                        currencyID = 1602,\n                        func = function()\n                            if C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo then\n                                local info = C_CurrencyInfo.GetCurrencyInfo(1602)\n                                return (info and info.quantity) or 0\n                            end\n                            return 0\n                        end,\n                    },\n',
+     '                    { -- FOREVER-BETA: no honor levels or conquest here; show the Honor currency by name\n                        name = "Honor",\n                        format = "%s",\n                        func = function()\n                            local ok, txt = pcall(function()\n                                if C_CurrencyInfo and C_CurrencyInfo.GetCurrencyListSize then\n                                    for i = 1, C_CurrencyInfo.GetCurrencyListSize() do\n                                        local info = C_CurrencyInfo.GetCurrencyListInfo(i)\n                                        if info and not info.isHeader and info.name == HONOR then\n                                            return BreakUpLargeNumbers(info.quantity or 0)\n                                        end\n                                    end\n                                end\n                                local info = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo and C_CurrencyInfo.GetCurrencyInfo(1792)\n                                return BreakUpLargeNumbers(info and info.quantity or 0)\n                            end)\n                            return ok and txt or "0"\n                        end,\n                    },\n'),
+    # 8g. The defaults stamp in 8e listens for EllesmereUI's ADDON_LOADED, which
+    #     has already fired before this module loads, so gate the two sections
+    #     where visibility is decided instead.
+    ("EllesmereUIBlizzardSkin\\EllesmereUIBlizzardSkin_CharacterSheet.lua",
+     "            local shouldShow = not (EllesmereUIDB and EllesmereUIDB[settingKey] == false)\n",
+     "            local shouldShow = not (EllesmereUIDB and EllesmereUIDB[settingKey] == false)\n"
+     '            if settingKey == "showStatCategory_Tertiary" or settingKey == "showStatCategory_Crests" then shouldShow = false end -- ' + TAG + "\n"),
     # 9. Tab skinner blanks every texture on a tab. Forever's spellbook
     #    category tabs are icon-only (TabSystem AddIconTab: .Icon + .IconMask),
     #    so they came up as empty squares. Leave those two alone.

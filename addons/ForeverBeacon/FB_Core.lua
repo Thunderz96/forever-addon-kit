@@ -455,6 +455,47 @@ SlashCmdList.FOREVERBEACON = function(msg)
             end
         end
 
+    elseif cmd == "mouse" then
+        -- What is drawing under the cursor? Every frame with mouse focus, its
+        -- debug name, and its parent chain. Run it while hovering the thing.
+        local foci = GetMouseFoci and GetMouseFoci() or {}
+        if #foci == 0 then ns.printf("nothing under the cursor.") end
+        for i, f in ipairs(foci) do
+            local ok, name = pcall(f.GetDebugName, f)
+            ns.printf("%d: %s  level=%s strata=%s", i, ok and name or "?",
+                tostring(pcall(f.GetFrameLevel, f) and select(2, pcall(f.GetFrameLevel, f))),
+                tostring(pcall(f.GetFrameStrata, f) and select(2, pcall(f.GetFrameStrata, f))))
+            local p, depth = f:GetParent(), 0
+            while p and depth < 8 do
+                local ok2, pn = pcall(p.GetDebugName, p)
+                ns.printf("   ^ %s", ok2 and pn or "?")
+                p, depth = p:GetParent(), depth + 1
+            end
+        end
+        -- Mouse-disabled frames never get focus, so also walk every visible
+        -- frame whose rectangle contains the cursor (named ones only, capped).
+        if EnumerateFrames then
+            local cx, cy = GetCursorPosition()
+            local n, f = 0, EnumerateFrames()
+            ns.printf("visible named frames under the cursor:")
+            while f and n < 60 do
+                -- IsVisible can hand back a secret boolean; testing it throws, so test inside the pcall.
+                local ok, hit = pcall(function()
+                    if f:IsForbidden() or not f:IsVisible() then return false end
+                    local s = f:GetEffectiveScale()
+                    local l, b, w, h = f:GetRect()
+                    return l and w and w > 0 and h > 0 and cx / s >= l and cx / s <= l + w and cy / s >= b and cy / s <= b + h
+                end)
+                if ok and hit then
+                    n = n + 1
+                    local okn, name = pcall(f.GetDebugName, f)
+                    ns.printf("  %s  level=%s strata=%s mouse=%s", okn and name or "?",
+                        tostring(f:GetFrameLevel()), tostring(f:GetFrameStrata()), tostring(f:IsMouseEnabled()))
+                end
+                f = EnumerateFrames(f)
+            end
+        end
+
     elseif cmd == "cdm" then
         -- What Blizzard's Cooldown Manager thinks, category by category, and
         -- what is actually on screen in its viewers and EllesmereUI's bars.
@@ -588,6 +629,7 @@ local HELP = {
     { "/fb bugs [n]",        "print this session's errors from BugGrabber, newest first (default 8)" },
     { "/fb errors",          "collector failures (which API was missing) and Lua error count" },
     { "/fb frame <Name>",    "why can't I see this frame: shown/alpha/scale/size/anchors/hidden ancestor" },
+    { "/fb mouse",           "list every frame under the cursor with its parent chain" },
     { "/fb bagtest",         "call ToggleAllBags under pcall and report what happened" },
     { "/fb cdm",             "what Blizzard's Cooldown Manager tracks per category, and what the viewers/EUI bars hold" },
     { "/fb probe",           "re-run the API probe (after opening a new Blizzard panel)" },
