@@ -211,6 +211,12 @@ REGEX_PATCHES = [
      r"^(\s*)select\((1[67]), (_G\.Character\w+Slot):GetRegions\(\)\):SetTexCoord(\(.*\))\s*$",
      r"\1do local r = select(\2, \3:GetRegions()) if r then r:SetTexCoord\4 end end -- " + TAG,
      re.M),
+    # 10. Forever brings back the ranged slot. Append it to every slot list so
+    #     it gets the same icon crop, item-level and enchant labels as the rest.
+    ("EllesmereUIBlizzardSkin\\EllesmereUIBlizzardSkin_CharacterSheet.lua",
+     r'("CharacterMainHandSlot",\s*"CharacterSecondaryHandSlot")(?!, "CharacterRangedSlot")',
+     r'\1, "CharacterRangedSlot"',
+     0),
 ]
 
 
