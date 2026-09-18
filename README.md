@@ -26,6 +26,20 @@ not inferred from patch notes.
 | **Blizzard's Cooldown Manager has no Forever data** | Every `C_CooldownViewer` category is empty for Forever specs, even with unlearned spells shown. | Anything that skins the CDM shows nothing. `ForeverCDM` reads the spellbook instead. |
 | **Beta game rules** | `DisableCampsites=1`, `TransmogEnabled=0`, `EncounterJournalDisabled=1`. | Camping and transmog cannot be researched yet. |
 
+### Corroboration (checked 2026-09-17)
+- Retail API on interface 16001, Classic globals missing: matches what other day-one porting efforts found
+  ([guildos #7](https://github.com/danielcosta42/guildos/issues/7), [#9](https://github.com/danielcosta42/guildos/issues/9)).
+- Missing `loadstring_untainted`: independently reported with the identical error and confirmed absent on Retail 12.1
+  ([GSE #2110](https://github.com/TimothyLuke/GSE-Advanced-Macro-Compiler/issues/2110)).
+- The saved-variables bug, the 100-error cap, the empty Cooldown Manager, and the in-combat aura lockdown were measured
+  here and have no other public report yet. Blizzard's
+  [known-issues post for Sept 17](https://us.forums.blizzard.com/en/wow/t/wow-forever-beta-known-issues-september-17/2352687)
+  lists none of them. Reproduction steps are in `docs/BUG_REPORTS.md`; the aura lockdown matches the Midnight 12.x
+  restriction, so it may be intended rather than a bug.
+- Related day-one work by others: [guildos](https://github.com/danielcosta42/guildos) (client probe, tooltip shim),
+  [WickCore](https://github.com/Wicksmods/WickCore) (platform library for Forever addons).
+- No addon site (CurseForge, Wago, WoWInterface) has a Forever game flavour yet; "Forever" in listing names is author-chosen.
+
 `data/forever_api.json` is the captured API surface: 6,046 global functions, 11,417 named frames,
 269 namespaces with their functions. `tools/api_scan.py` diffs any addon against it.
 
