@@ -65,6 +65,20 @@ PATCHES = [
     ("!BugGrabber\\BugGrabber.lua",
      "BUGGRABBER_ERRORS_PER_SEC_BEFORE_THROTTLE = 10",
      "BUGGRABBER_ERRORS_PER_SEC_BEFORE_THROTTLE = 300 -- " + TAG + ": was 10; snippet-error bursts paused it before real errors"),
+    # 8. Character sheet: the stats pane EUI parks off-screen is named
+    #    CharacterStatPane in its code, but this client's frame is
+    #    CharacterStatsPane, so Blizzard's stats drew over EUI's own panel.
+    ("EllesmereUIBlizzardSkin\\EllesmereUIBlizzardSkin_CharacterSheet.lua",
+     "    if CharacterStatPane then\n",
+     "    local CharacterStatPane = CharacterStatPane or _G.CharacterStatsPane -- " + TAG
+     + ": Forever names the pane with an s\n    if CharacterStatPane then\n"),
+    # 9. Tab skinner blanks every texture on a tab. Forever's spellbook
+    #    category tabs are icon-only (TabSystem AddIconTab: .Icon + .IconMask),
+    #    so they came up as empty squares. Leave those two alone.
+    ("EllesmereUIBlizzardSkin\\EllesmereUIBlizzardSkin_WindowEngine.lua",
+     '        if r and r:IsObjectType("Texture") then\n            r:SetTexture("")',
+     '        if r and r:IsObjectType("Texture") and r ~= tab.Icon and r ~= tab.IconMask then -- ' + TAG
+     + ': keep icon tabs\n            r:SetTexture("")'),
     ("BugSack\\sack.lua", TAB_OLD.format(name="BugSackTabAll"), TAB_NEW.format(name="BugSackTabAll")),
     ("BugSack\\sack.lua", TAB_OLD.format(name="BugSackTabSession"), TAB_NEW.format(name="BugSackTabSession")),
     ("BugSack\\sack.lua", TAB_OLD.format(name="BugSackTabLast"), TAB_NEW.format(name="BugSackTabLast")),
