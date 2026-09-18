@@ -146,6 +146,44 @@ PATCHES = [
      "            local shouldShow = not (EllesmereUIDB and EllesmereUIDB[settingKey] == false)\n",
      "            local shouldShow = not (EllesmereUIDB and EllesmereUIDB[settingKey] == false)\n"
      '            if settingKey == "showStatCategory_Tertiary" or settingKey == "showStatCategory_Crests" then shouldShow = false end -- ' + TAG + "\n"),
+    # 8h. Forever's side tabs open SkillsFrame, PVPRankFrame and StatisticsFrame,
+    #     which EUI does not know, so its character-tab overlays (model bg,
+    #     stats panel, slots) stayed up and covered those lists. Hook them like
+    #     Reputation/Currency, and count them in the initial tab check.
+    ("EllesmereUIBlizzardSkin\\EllesmereUIBlizzardSkin_CharacterSheet.lua",
+     "    _hookPaneOnShow(_G.TokenFrame,      false)\n",
+     "    _hookPaneOnShow(_G.TokenFrame,      false)\n"
+     "    _hookPaneOnShow(_G.SkillsFrame,     false) -- " + TAG + "\n"
+     "    _hookPaneOnShow(_G.PVPRankFrame,    false) -- " + TAG + "\n"
+     "    _hookPaneOnShow(_G.StatisticsFrame, false) -- " + TAG + "\n"),
+    ("EllesmereUIBlizzardSkin\\EllesmereUIBlizzardSkin_CharacterSheet.lua",
+     "    local isCharTab = not (_G.ReputationFrame and _G.ReputationFrame:IsShown())\n"
+     "        and not (_G.TokenFrame and _G.TokenFrame:IsShown())\n",
+     "    local isCharTab = not (_G.ReputationFrame and _G.ReputationFrame:IsShown())\n"
+     "        and not (_G.TokenFrame and _G.TokenFrame:IsShown())\n"
+     "        and not (_G.SkillsFrame and _G.SkillsFrame:IsShown()) -- " + TAG + "\n"
+     "        and not (_G.PVPRankFrame and _G.PVPRankFrame:IsShown()) -- " + TAG + "\n"
+     "        and not (_G.StatisticsFrame and _G.StatisticsFrame:IsShown()) -- " + TAG + "\n"),
+    # 8i. The side-tab panes sit at frame level 1-5 under an EUI child of
+    #     CharacterFrame at level 7, so their rows are clickable but invisible.
+    #     Lift each pane above it whenever it shows.
+    ("EllesmereUIBlizzardSkin\\EllesmereUIBlizzardSkin_CharacterSheet.lua",
+     "    _hookPaneOnShow(_G.StatisticsFrame, false) -- " + TAG + "\n",
+     "    _hookPaneOnShow(_G.StatisticsFrame, false) -- " + TAG + "\n"
+     "    for _, pn in ipairs({ \"SkillsFrame\", \"PVPRankFrame\", \"StatisticsFrame\", \"TokenFrame\", \"ReputationFrame\" }) do -- " + TAG + ": lift side panes above EUI's sheet art\n"
+     "        local pane = _G[pn]\n"
+     "        if pane and not pane:IsForbidden() then\n"
+     "            -- the pane itself is useParentLevel (pinned to CharacterFrame), so lift its children\n"
+     "            local function Lift()\n"
+     "                for i = 1, select(\"#\", pane:GetChildren()) do\n"
+     "                    local c = select(i, pane:GetChildren())\n"
+     "                    if c and c.GetFrameLevel and not c:IsForbidden() and c:GetFrameLevel() < 20 then c:SetFrameLevel(20 + c:GetFrameLevel()) end\n"
+     "                end\n"
+     "            end\n"
+     "            Lift()\n"
+     "            pane:HookScript(\"OnShow\", Lift)\n"
+     "        end\n"
+     "    end\n"),
     # 9. Tab skinner blanks every texture on a tab. Forever's spellbook
     #    category tabs are icon-only (TabSystem AddIconTab: .Icon + .IconMask),
     #    so they came up as empty squares. Leave those two alone.

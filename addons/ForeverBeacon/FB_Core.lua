@@ -489,8 +489,20 @@ SlashCmdList.FOREVERBEACON = function(msg)
                 if ok and hit then
                     n = n + 1
                     local okn, name = pcall(f.GetDebugName, f)
-                    ns.printf("  %s  level=%s strata=%s mouse=%s", okn and name or "?",
-                        tostring(f:GetFrameLevel()), tostring(f:GetFrameStrata()), tostring(f:IsMouseEnabled()))
+                    -- visible textures: what this frame actually paints (path/atlas or "color")
+                    local tex = {}
+                    pcall(function()
+                        for j = 1, select("#", f:GetRegions()) do
+                            local r = select(j, f:GetRegions())
+                            if r and r:IsObjectType("Texture") and r:IsShown() and (r:GetAlpha() or 0) > 0 then
+                                local t = (r.GetAtlas and r:GetAtlas()) or r:GetTexture()
+                                tex[#tex + 1] = tostring(t or "color")
+                            end
+                        end
+                    end)
+                    ns.printf("  %s  level=%s strata=%s mouse=%s tex=%s", okn and name or "?",
+                        tostring(f:GetFrameLevel()), tostring(f:GetFrameStrata()), tostring(f:IsMouseEnabled()),
+                        #tex > 0 and table.concat(tex, ",", 1, math.min(#tex, 3)) or "-")
                 end
                 f = EnumerateFrames(f)
             end
