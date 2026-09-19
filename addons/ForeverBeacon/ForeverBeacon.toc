@@ -3,7 +3,7 @@
 ## Notes: Harvests world data (quests, NPCs, items, loot, spells, zones, API surface) to SavedVariables during the WoW: Forever beta.
 ## IconTexture: Interface\Icons\INV_Misc_Gear_01
 ## Author: Thunderz
-## Version: 0.3.12
+## Version: 0.3.13
 ## SavedVariables: ForeverBeaconDB
 ## X-Flavor-Note: 16001 = WoW Forever beta 1.60.1.69893 (wow_classic_beta), confirmed 2026-09-17.
 

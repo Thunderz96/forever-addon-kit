@@ -112,6 +112,14 @@ def known_ids(rel):
     return {int(m) for m in re.findall(r"^\[(\d+)\]\s*=\s*\{", read(os.path.join(QUESTIE, rel)), re.M)}
 
 
+def questie_names(rel):
+    """lower-case name -> set of IDs, from one of Questie's base files ([123] = {'Name', ...)."""
+    out = {}
+    for i, name in re.findall(r"^\[(\d+)\] = \{'((?:[^'\\]|\\.)*)'", read(os.path.join(QUESTIE, rel)), re.M):
+        out.setdefault(name.replace("\\'", "'").lower(), set()).add(int(i))
+    return out
+
+
 def map_tables():
     """uiMapID -> Questie areaID, and lower-case zone name -> uiMapID."""
     to_area, by_name = {}, {}
@@ -357,6 +365,12 @@ def build():
                               "starts": set(), "ends": set()}
         return True
 
+    seen_names = {}                                       # names of NPCs met in game -> their IDs
+    for nid, info in data.npcs.items():
+        if info.get("name"):
+            seen_names.setdefault(info["name"].lower(), set()).add(nid)
+    classic_names = questie_names(os.path.join("Database", "Classic", "classicNpcDB.lua"))
+
     report = []
     for qid in sorted(data.quests):
         q = data.quests[qid]
@@ -380,9 +394,19 @@ def build():
             continue
 
         creatures, objects, items = [], [], []
+        named = 0
         for index in sorted(data.objectives.get(qid, {})):
             o = data.objectives[qid][index]
             t = o["target"]
+            if not t and o["type"] == "kill":
+                # The game API gives an objective's words, never its target ID. "Dark Neophyte slain"
+                # names the mob, so look the name up: first among NPCs actually seen in game, then
+                # in Questie's own data. Exact match only, and only when it points at ONE id.
+                who = re.sub(r"\s+(slain|killed|destroyed)$", "", (o["text"] or "").strip(), flags=re.I).lower()
+                found = seen_names.get(who) or classic_names.get(who) or set()
+                if len(found) == 1:
+                    t = o["target"] = next(iter(found))
+                    named += 1
             if o["type"] in ("kill", "talk") and usable("npc", t):
                 creatures.append((t, o["text"]))
             elif o["type"] == "object" and usable("object", t):
@@ -396,6 +420,12 @@ def build():
                                        "vendors": sorted(n for n in it["vendors"] if usable("npc", n)),
                                        "starts": it["starts"]}
                 items.append((t, o["text"]))
+        # Questie lines its objective list up against the quest log by position. A partial list
+        # would attach a pin to the wrong objective, so it is all of a quest's objectives or none.
+        total = len(data.objectives.get(qid, {}))
+        resolved = len(creatures) + len(objects) + len(items)
+        if resolved < total:
+            creatures, objects, items = [], [], []
         level = q.get("quest_level") or q.get("level_guess") or 1
         guessed = not q.get("quest_level")
         q_out = dict(q)
@@ -403,12 +433,15 @@ def build():
                      required=q.get("required_level") or max(1, min(level, q.get("turnin_level") or level) - 2),
                      zone=q.get("zone_area") or to_area.get(q.get("zone_map")))
         out["quests"][qid] = q_out
-        pins = sum(1 for i, _ in items if i in known["item"] or (out["items"].get(i) and (out["items"][i]["npcs"] or out["items"][i]["objects"])))
-        pins += len(creatures) + len(objects)
-        total = len(data.objectives.get(qid, {}))
+        if not total:
+            note = ""
+        elif resolved < total:
+            note = "objectives left out: only %d of %d have a known target" % (resolved, total)
+        else:
+            note = "all %d objectives included%s" % (total, (" (%d matched by name)" % named) if named else "")
         report.append((qid, q["title"], "included",
                        " + ".join(w for w in ("giver", "ender") if w in ends) + (" (level is a guess)" if guessed else ""),
-                       ("%d of %d objectives pinned" % (pins, total)) if total else "", ", ".join(data.notes[qid])))
+                       note, ", ".join(data.notes[qid])))
     return out, report
 
 
@@ -487,7 +520,7 @@ def render(out):
                 f.append("[%s.questStarts] = {%s}" % (keys, ",".join(map(str, sorted(n["starts"])))))
             if n["ends"]:
                 f.append("[%s.questEnds] = {%s}" % (keys, ",".join(map(str, sorted(n["ends"])))))
-            if keys == "npcKeys":
+            if keys == "npcKeys" and (n["starts"] or n["ends"]):   # a mob you kill is friendly to nobody
                 f.append("[npcKeys.friendlyToFaction] = " + lua_str(n["faction"] if n["faction"] in ("A", "H", "AH") else "AH"))
             L.append("        [%d] = {\n            %s,\n        }," % (i, ",\n            ".join(f)))
         L += ["    }", "end", ""]

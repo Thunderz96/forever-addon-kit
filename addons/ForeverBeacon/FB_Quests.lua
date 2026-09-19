@@ -80,6 +80,25 @@ ns.On("QUEST_DETAIL", function()
     logEvent("offered", questID, { npc = id })
 end)
 
+-- An item objective's text is the item's name, and the client often has not
+-- loaded that name yet at the moment a quest is accepted, so the text comes back
+-- empty. Re-read a little later and fill only the blanks.
+local function refillObjectives(questID)
+    local rec = ns.DB().quests[questID]
+    if not (rec and C_QuestLog and C_QuestLog.GetQuestObjectives) then return end
+    local ok, objs = pcall(C_QuestLog.GetQuestObjectives, questID)
+    if not ok or type(objs) ~= "table" then return end
+    rec.objectives = rec.objectives or {}
+    for i, o in ipairs(objs) do
+        local r = rec.objectives[i]
+        if not r then
+            rec.objectives[i] = { text = o.text, type = o.type, needed = o.numRequired }
+        elseif (r.text == nil or r.text == "") and type(o.text) == "string" and o.text ~= "" then
+            r.text = o.text
+        end
+    end
+end
+
 ns.On("QUEST_ACCEPTED", function(a, b)
     -- Classic passes (questLogIndex, questID); modern clients pass (questID).
     local questID = type(b) == "number" and b or a
@@ -109,6 +128,7 @@ ns.On("QUEST_ACCEPTED", function(a, b)
         end
     end
     logEvent("accepted", questID)
+    if C_Timer and C_Timer.After then C_Timer.After(5, function() refillObjectives(questID) end) end
 end)
 
 -- Turn-in window (QUEST_COMPLETE): who takes it and what it actually pays.
@@ -178,6 +198,7 @@ local function dumpQuestLog()
                 local rec = questRec(info.questID, info.title)
                 rec.level = info.level
                 rec.levelSource = "quest"
+                refillObjectives(info.questID)      -- names are loaded by login; fills blanks from earlier sessions
                 rec.header = info.campaignID and ("campaign:" .. info.campaignID) or rec.header
             end
         end
