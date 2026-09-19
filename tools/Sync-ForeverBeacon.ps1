@@ -76,6 +76,28 @@ if ($Register) {
     return
 }
 
+# The client's WDB caches hold the SERVER's answers for every quest, creature and
+# object it has been asked about: true quest levels and objective target IDs,
+# which no addon API exposes. The client rewrites them at exit and throws them
+# away whenever a new build arrives, so keep a dated copy of each version.
+# Done before the SavedVariables check below, because the caches change on their own.
+$WdbDir = Join-Path $WowRoot "_classic_beta_\Cache\WDB\enUS"
+$WdbArchive = Join-Path $DataDir "wdb"
+if (Test-Path $WdbDir) {
+    foreach ($name in "questcache.wdb", "creaturecache.wdb", "gameobjectcache.wdb") {
+        $src = Join-Path $WdbDir $name
+        if (-not (Test-Path $src)) { continue }
+        $item = Get-Item $src
+        if ($item.Length -le 64) { continue }      # an empty cache is just a header
+        $dest = Join-Path $WdbArchive ("{0}-{1}" -f $item.LastWriteTime.ToString("yyyyMMdd-HHmmss"), $name)
+        if (-not (Test-Path $dest)) {
+            New-Item -ItemType Directory -Force $WdbArchive | Out-Null
+            Copy-Item $src $dest
+            Write-Host "Archived $name ($([math]::Round($item.Length / 1KB)) KB) -> $dest"
+        }
+    }
+}
+
 $file = Get-BeaconFile
 $stamp = $file.LastWriteTime.ToString("yyyyMMdd-HHmmss")
 $last = if (Test-Path $StateFile) { Get-Content $StateFile -Raw } else { "" }

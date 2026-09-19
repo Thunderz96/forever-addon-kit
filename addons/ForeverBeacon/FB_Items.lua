@@ -88,7 +88,11 @@ ns.On("PLAYER_LOGIN", function() ns.try("tooltip.wire", wireTooltips) end)
 
 local lastLootKey
 
-ns.On("LOOT_OPENED", function()
+-- LOOT_READY fires before LOOT_OPENED. A fast auto-looter (SpeedyAutoLoot acts on
+-- LOOT_READY) has emptied the corpse by the time LOOT_OPENED arrives, which left
+-- records that knew who was looted but not what dropped. So read on whichever
+-- comes first; the key below stops the same corpse being recorded twice.
+local function captureLoot()
     if not GetNumLootItems then return end
     local db = ns.DB()
     local n = GetNumLootItems()
@@ -103,8 +107,9 @@ ns.On("LOOT_OPENED", function()
     local kind, sourceID = ns.ParseGUID(sourceGUID)
     if kind == "Player" then kind = "self" end
 
-    -- Re-opening the same corpse is not a second drop.
-    local key = (sourceGUID or "?") .. "|" .. n
+    -- Re-opening the same corpse is not a second drop. Keyed on the corpse alone:
+    -- the slot count shrinks between LOOT_READY and LOOT_OPENED once auto-loot starts.
+    local key = sourceGUID or ("?|" .. n)
     if key == lastLootKey then return end
     lastLootKey = key
 
@@ -136,7 +141,10 @@ ns.On("LOOT_OPENED", function()
         local name = existing and existing.name or ("object " .. sourceID)
         ns.RecordObject(name, sourceID, "loot")
     end
-end)
+end
+
+ns.On("LOOT_READY", captureLoot)
+ns.On("LOOT_OPENED", captureLoot)
 
 -- Item links seen in chat (drops announced by others, trade links) are cheap
 -- catalog entries even without a tooltip.
