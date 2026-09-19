@@ -389,9 +389,7 @@ def build():
                     out[kind + "s"][i]["starts" if who == "giver" else "ends"].add(qid)
             elif kind == "item" and i:
                 ends[who] = (kind, i)
-        if not ends:
-            report.append((qid, q["title"], "skipped", "no quest giver or turn-in with a known location yet", ""))
-            continue
+        no_ends = not ends        # decided below: objectives alone can still justify including it
 
         creatures, objects, items = [], [], []
         named = 0
@@ -426,6 +424,10 @@ def build():
         resolved = len(creatures) + len(objects) + len(items)
         if resolved < total:
             creatures, objects, items = [], [], []
+        if no_ends and not (creatures or objects or items):
+            # Nothing Questie could draw: no start, no turn-in, no objective with a target.
+            report.append((qid, q["title"], "skipped", "no quest giver, turn-in or resolvable objective yet", ""))
+            continue
         level = q.get("quest_level") or q.get("level_guess") or 1
         guessed = not q.get("quest_level")
         q_out = dict(q)
@@ -440,7 +442,7 @@ def build():
         else:
             note = "all %d objectives included%s" % (total, (" (%d matched by name)" % named) if named else "")
         report.append((qid, q["title"], "included",
-                       " + ".join(w for w in ("giver", "ender") if w in ends) + (" (level is a guess)" if guessed else ""),
+                       (" + ".join(w for w in ("giver", "ender") if w in ends) or "objectives only") + (" (level is a guess)" if guessed else ""),
                        note, ", ".join(data.notes[qid])))
     return out, report
 

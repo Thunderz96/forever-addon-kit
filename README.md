@@ -112,6 +112,7 @@ point from main chunk to logout. Kept for reproduction.
 | `read_bugs.py` | Print BugGrabber's errors from disk. |
 | `fb_extract.py`, `Sync-ForeverBeacon.ps1` | ForeverBeacon extraction and scheduled archive. |
 | `questie_overlay.py` | Feed Questie the Forever quests it lacks, from ForeverBeacon's harvest plus a hand-edited CSV. Generates records in the shape Questie used for Season of Discovery, patches in the injection call, and hashes the overlay into Questie's version string so its database recompiles when your data changes. Needs Questie's `feature/forever` branch installed. |
+| `wdb_zone_report.py` | List the quests that are new to Forever, grouped by zone, from archived `questcache.wdb` snapshots (fill the cache with ForeverBeacon's `/fb sweep`). Finds the level and zone fields by testing every offset against Questie's Classic database and refuses to run if they do not match. |
 
 The tools find the kit's own files (`data/forever_api.json`, `addons/ForeverCompat`) relative to
 themselves. What you must edit is the WoW install path at the top of each script, and the
