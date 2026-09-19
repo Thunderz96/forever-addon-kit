@@ -117,9 +117,11 @@ The client's `UiMapAssignment` rows for the zones involved:
 ## A sanity check the producer can run
 
 These are known-good rows captured in game on build 1.60.1.69893. Your data should agree:
+(Levels corrected 2026-09-19 from the server's own cache record. The first version of this file said
+level 12 for both, which was the capturing character's level: a Forever Beacon bug fixed in 0.3.12.)
 
-- quest 96899 "Bandarion Keep", level 12, Horde, given by NPC 267009 "Hadric Harlson" at
+- quest 96899 "Bandarion Keep", level 13 (requires 10), Horde, given by NPC 267009 "Hadric Harlson" at
   Tirisfal Glades (uiMap 1420) 65.9, 61.0
-- quest 97891 "Prompt Potion Runner", level 12, given by NPC 7683 "Alessandro Luca" at Undercity
+- quest 97891 "Prompt Potion Runner", level 16 (requires 9), given by NPC 7683 "Alessandro Luca" at Undercity
   (uiMap 1458) 58.5, 54.8, turned in to NPC 11044 "Doctor Martin Felben" at 46.4, 74.1;
   objective "Speak to Doctor Martin Felben", type talk, count 1
