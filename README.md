@@ -92,7 +92,7 @@ Loads first (`!!` prefix) and does three jobs:
 A Wowhead-Looter-style harvester: API probe, event firehose, NPCs, vendors, trainers, gossip,
 taxi, item and spell tooltips, loot, objects, spellbook, talents and Legacy trees, auras, quests
 with positions. `tools/fb_extract.py` turns the SavedVariables payload into CSV/JSONL. Also carries
-the diagnostic commands used for the findings above (`/fb bugs`, `/fb frame`, `/fb mouse`, `/fb target`, `/fb cdm`, `/fb help`).
+the diagnostic commands used for the findings above (`/fb bugs`, `/fb frame`, `/fb mouse`, `/fb target`, `/fb cdm`, `/fb help`). `/fb zonequests` and `/fb sweep` make the client ask the server about quests you have not played, which is the only way their records reach the WDB cache on this client.
 
 ### FBSVTest
 The small test addon that proved the saved-variables bug: it logs a pre-seeded global at every lifecycle

@@ -455,6 +455,12 @@ SlashCmdList.FOREVERBEACON = function(msg)
             end
         end
 
+    elseif cmd == "zonequests" or cmd == "zq" then
+        if ns.ZoneQuests then ns.ZoneQuests(rest) end
+
+    elseif cmd == "sweep" then
+        if ns.Sweep then ns.Sweep(rest) end
+
     elseif cmd == "target" then
         -- A paste-ready line for tools\questie_overlay.py's manual_quests.csv:
         -- npc_id, name, map, x, y (x/y as the 0-100 numbers the map shows).
@@ -662,6 +668,8 @@ local HELP = {
     { "/fb frame <Name>",    "why can't I see this frame: shown/alpha/scale/size/anchors/hidden ancestor" },
     { "/fb mouse",           "list every frame under the cursor with its parent chain" },
     { "/fb target",          "npc_id,name,map,x,y of your target, ready to paste into the Questie overlay CSV" },
+    { "/fb zonequests [map]","quests the client says are on offer on a map (default: where you stand), plus their chains" },
+    { "/fb sweep <a> <b>",   "ask the server for every quest ID in a range, slowly; fills the WDB cache. /fb sweep stop" },
     { "/fb bagtest",         "call ToggleAllBags under pcall and report what happened" },
     { "/fb cdm",             "what Blizzard's Cooldown Manager tracks per category, and what the viewers/EUI bars hold" },
     { "/fb probe",           "re-run the API probe (after opening a new Blizzard panel)" },
