@@ -48,7 +48,10 @@ LOG = os.path.join(HERE, "sv_bridge.log")
 
 # Addons whose account-wide settings are bridged. The file name is the addon
 # folder name; add more here as they are ported.
-BRIDGED = ["EllesmereUI", "BugSack", "SpeedyAutoLoot", "DialogueUI", "ForeverCDM"]
+# ForeverCDM parked 2026-09-18: it now keeps its own settings in an opt-in macro, and leaving it
+# bridged hides that path from testing. To re-enable: add "ForeverCDM" back and rename
+# seeds\ForeverCDM.lua.parked to ForeverCDM.lua in the installed !!ForeverCompat folder.
+BRIDGED = ["EllesmereUI", "BugSack", "SpeedyAutoLoot", "DialogueUI", "Questie"]
 EXE = "WowB.exe"
 
 TOC = """## Interface: 16001
@@ -89,7 +92,10 @@ def backup(addon, path):
     os.makedirs(d, exist_ok=True)
     shutil.copyfile(path, os.path.join(d, time.strftime("%Y%m%d-%H%M%S") + ".lua"))
     old = sorted(glob.glob(os.path.join(d, "*.lua")))
-    for p in old[:-40]:
+    # Small settings files keep a long history. A big one (Questie's compiled
+    # database is tens of MB) keeps three, or this folder swamps OneDrive.
+    keep = 40 if os.path.getsize(path) < 1_000_000 else 3
+    for p in old[:-keep]:
         os.remove(p)
 
 

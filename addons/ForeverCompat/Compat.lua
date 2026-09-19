@@ -192,4 +192,33 @@ if C_FriendList then
     define("SendWho", C_FriendList.SendWho)
 end
 
+-- Abandoning a quest the Classic way: select it, SetAbandonQuest(), then show a
+-- popup with GetAbandonQuestName() / GetAbandonQuestItems(). Questie's tracker
+-- menu does exactly this. Classic returned the items as one text string; the
+-- modern call returns item IDs, so they are turned back into names.
+if C_QuestLog and C_QuestLog.SetAbandonQuest then
+    define("SetAbandonQuest", C_QuestLog.SetAbandonQuest)
+    define("AbandonQuest", C_QuestLog.AbandonQuest)
+    define("GetAbandonQuestName", function()
+        local questID = C_QuestLog.GetAbandonQuest and C_QuestLog.GetAbandonQuest()
+        return questID and C_QuestLog.GetTitleForQuestID and C_QuestLog.GetTitleForQuestID(questID) or nil
+    end)
+    define("GetAbandonQuestItems", function()
+        local ids = C_QuestLog.GetAbandonQuestItems and C_QuestLog.GetAbandonQuestItems()
+        if type(ids) ~= "table" or #ids == 0 then return nil end
+        local names = {}
+        for _, itemID in ipairs(ids) do
+            names[#names + 1] = (C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(itemID)) or ("item " .. itemID)
+        end
+        return table.concat(names, ", ")
+    end)
+end
+
+-- Small Classic UI helpers that are simply gone.
+define("ActionStatus_DisplayMessage", function(text)       -- the brief yellow centre-screen line
+    if UIErrorsFrame and text then UIErrorsFrame:AddMessage(text, 1.0, 0.82, 0.0) end
+end)
+define("StaticPopup_Resize", function() end)               -- modern popups size themselves
+define("GetStablePetFoodTypes", function() end)            -- hunter pet diet list; no modern equivalent, so "none"
+
 ForeverCompat_Loaded = true

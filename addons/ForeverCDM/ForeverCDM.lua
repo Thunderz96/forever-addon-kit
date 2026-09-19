@@ -78,8 +78,13 @@ end
 
 -- Spell helpers ---------------------------------------------------------------
 
+-- Items share the bars with spells. An entry below zero is an item: -6948 is
+-- item 6948. That keeps every list a plain list of numbers, so ordering, the
+-- settings macro and the config window need no second code path.
 local function resolveSpell(text)
     if not text or text == "" then return nil end
+    local itemID = text:match("item:(%d+)")            -- "item:6948" or a pasted item link
+    if itemID then return -tonumber(itemID) end
     local id = tonumber(text)
     if not id and C_Spell and C_Spell.GetSpellIDForSpellIdentifier then
         id = C_Spell.GetSpellIDForSpellIdentifier(text)
@@ -88,14 +93,29 @@ local function resolveSpell(text)
         local info = C_Spell.GetSpellInfo(text)
         id = info and info.spellID
     end
+    if not id and C_Item and C_Item.GetItemInfoInstant then   -- an item name the client already knows
+        local known = C_Item.GetItemInfoInstant(text)
+        if known then id = -known end
+    end
     return id
 end
 
+local itemNamesPending = false      -- an item name was not cached yet; GET_ITEM_INFO_RECEIVED will refresh
+
 local function spellName(id)
+    if id < 0 then
+        local name = C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(-id)
+        if not name then
+            itemNamesPending = true
+            if C_Item and C_Item.RequestLoadItemDataByID then C_Item.RequestLoadItemDataByID(-id) end
+        end
+        return name or ("item " .. -id)
+    end
     return (C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(id)) or ("spell " .. tostring(id))
 end
 
 local function spellIcon(id)
+    if id < 0 then return (C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(-id)) or 134400 end
     return (C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(id)) or 134400
 end
 
@@ -198,9 +218,37 @@ end
 
 -- Updates -------------------------------------------------------------------------
 
+-- Trinkets, potions, bandages, engineering gadgets. Item cooldowns have no
+-- duration-object variant, so if one ever arrives secret the swipe is simply
+-- left off rather than guessed.
+local function updateItemIcon(f)
+    local itemID = -f.spellID
+    local start, duration, enable
+    if C_Container and C_Container.GetItemCooldown then start, duration, enable = C_Container.GetItemCooldown(itemID) end
+    local onCD, known = false, true
+    if secret(start) or secret(duration) then
+        known = false
+        f.cd:Clear()
+    else
+        f.cd:SetCooldown(start or 0, duration or 0)
+        onCD = (duration or 0) > 1.5 and (secret(enable) or (enable ~= 0 and enable ~= false))
+    end
+    local count = C_Item and C_Item.GetItemCount and C_Item.GetItemCount(itemID, false, true)   -- bags + equipped, counting charges
+    local have = secret(count) or (count or 0) > 0
+    f.icon:SetDesaturated(onCD or not have)
+    if not have then
+        f:SetAlpha(db.hideReady and 0 or 0.35)          -- run out, or unequipped
+    else
+        f:SetAlpha((not db.hideReady or not known or onCD) and 1 or 0)
+    end
+    f.count:SetText((not secret(count) and (count or 0) > 1) and count or "")
+end
+
 local function updateCooldowns(key)
     for _, f in ipairs(icons[key or "cds"]) do
-        if f:IsShown() and f.spellID then
+        if f:IsShown() and f.spellID and f.spellID < 0 then
+            updateItemIcon(f)
+        elseif f:IsShown() and f.spellID then
             local c = C_Spell and C_Spell.GetSpellCooldown and C_Spell.GetSpellCooldown(f.spellID)
             if c then
                 -- Secret values go straight to the widget; it may draw what Lua may
@@ -769,6 +817,10 @@ ev:SetScript("OnEvent", function(self, event, ...)
         self:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
         self:RegisterEvent("SPELLS_CHANGED")
         self:RegisterEvent("PLAYER_LOGOUT")
+        -- pcall: registering an event this client lacks throws and would abort the handler
+        for _, e in ipairs({ "BAG_UPDATE_COOLDOWN", "BAG_UPDATE_DELAYED", "PLAYER_EQUIPMENT_CHANGED", "GET_ITEM_INFO_RECEIVED" }) do
+            pcall(self.RegisterEvent, self, e)
+        end
         self:RegisterEvent("PLAYER_REGEN_ENABLED")
         -- Still waiting for the macro list: UPDATE_MACROS will say when it has
         -- arrived. The timer only covers a client where that event never fires.
@@ -784,6 +836,14 @@ ev:SetScript("OnEvent", function(self, event, ...)
         updateBuffs()
     elseif event == "PLAYER_LOGOUT" then
         writeMirror()        -- flush anything still waiting on the debounce
+    elseif event == "GET_ITEM_INFO_RECEIVED" then
+        if itemNamesPending then              -- only when a name was actually missing
+            itemNamesPending = false
+            for _, key in ipairs(BAR_KEYS) do
+                for _, f in ipairs(icons[key]) do if f.spellID then f.name:SetText(spellName(f.spellID)) end end
+            end
+            if ForeverCDM_RefreshConfig then ForeverCDM_RefreshConfig() end
+        end
     elseif event == "UPDATE_MACROS" then
         mirror.macrosSeen = true
         if db then lateMirror(true) end
@@ -807,6 +867,7 @@ C_Timer.NewTicker(0.5, function() if db then updateBuffs() end end)
 
 local HELP = {
     "/fcdm add <spell>       add a spell cooldown icon (name as in spellbook, or spellID)",
+    "/fcdm add item:<id>     add an item: trinket, potion, bandage... (item name or a pasted link also work)",
     "/fcdm addbuff <spell>   watch a buff on yourself (shows bright while active)",
     "/fcdm addutility <spell> add a spell to the Utility row",
     "/fcdm remove <spell>    remove from all rows",
@@ -832,6 +893,7 @@ SlashCmdList.FOREVERCDM = function(msg)
         local id = resolveSpell(rest)
         if not id then say("no spell called \"%s\". Use the name from your spellbook, or a spellID.", rest) return end
         local key = cmd == "add" and "cds" or cmd == "addutility" and "utilities" or "buffs"
+        if id < 0 and key == "buffs" then say("items go on the Cooldowns or Utility bar; the Buffs bar watches auras.") return end
         if contains(db[key], id) then say("%s is already tracked.", spellName(id)) return end
         db[key][#db[key] + 1] = id
         refreshAll()

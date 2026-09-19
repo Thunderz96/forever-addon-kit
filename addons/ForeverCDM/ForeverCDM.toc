@@ -2,7 +2,7 @@
 ## Title: |cffd2621fForever|r Cooldown Manager
 ## Notes: Cooldown and buff icon rows that read the spellbook and your auras directly. Does not depend on Blizzard's Cooldown Manager data, which is empty on Forever.
 ## Author: Thunderz
-## Version: 0.4.0
+## Version: 0.5.0
 ## SavedVariables: ForeverCDMDB
 ## IconTexture: Interface\AddOns\ForeverCDM\media\icon.tga
 ## X-Curse-Project-ID: 1701701

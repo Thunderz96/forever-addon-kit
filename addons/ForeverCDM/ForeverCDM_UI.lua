@@ -173,13 +173,28 @@ local function spellbookSpells()
             end
         end
     end
+    -- usable items you are wearing or carrying: anything with a "Use:" effect
+    local function offer(itemID)
+        if itemID and not seen[-itemID] and C_Item and C_Item.GetItemSpell and C_Item.GetItemSpell(itemID) then
+            seen[-itemID] = true
+            out[#out + 1] = { id = -itemID, name = CDM.SpellName(-itemID), tab = "Items" }
+        end
+    end
+    if GetInventoryItemID then
+        for slot = 1, 19 do offer(GetInventoryItemID("player", slot)) end
+    end
+    if C_Container and C_Container.GetContainerNumSlots then
+        for bag = 0, 4 do
+            for slot = 1, C_Container.GetContainerNumSlots(bag) or 0 do offer(C_Container.GetContainerItemID(bag, slot)) end
+        end
+    end
     -- anything tracked that is not in the book (added by ID) still needs a row
     local d = db()
     for _, key in ipairs({ "cds", "utilities", "buffs" }) do
         for _, id in ipairs(d[key]) do
             if not seen[id] then
                 seen[id] = true
-                out[#out + 1] = { id = id, name = CDM.SpellName(id), tab = "Other" }
+                out[#out + 1] = { id = id, name = CDM.SpellName(id), tab = id < 0 and "Items" or "Other" }
             end
         end
     end
@@ -296,7 +311,7 @@ local function newSpellRow(content)
     r:SetScript("OnEnter", function(self)
         self.hover:Show()
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetSpellByID(self.id)
+        if self.id < 0 then GameTooltip:SetItemByID(-self.id) else GameTooltip:SetSpellByID(self.id) end
         GameTooltip:Show()
     end)
     r:SetScript("OnLeave", function(self) self.hover:Hide() GameTooltip:Hide() end)
@@ -343,6 +358,7 @@ refreshList = function()
         r.cd:SetChecked(CDM.Contains(d.cds, s.id) ~= nil)
         r.utility:SetChecked(CDM.Contains(d.utilities, s.id) ~= nil)
         r.buff:SetChecked(CDM.Contains(d.buffs, s.id) ~= nil)
+        r.buff:SetShown(s.id > 0)          -- the Buffs bar watches auras; an item is not one
         r:ClearAllPoints()
         r:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
         r:SetPoint("RIGHT", content, "RIGHT", 0, 0)
@@ -512,7 +528,7 @@ local function build()
     end)
 
     y = y - 8
-    caption("Add by name or spell ID")
+    caption("Add a spell, or item:1234")
     local addBox = CreateFrame("EditBox", "ForeverCDMConfigAdd", opts)
     addBox:SetSize(170, 22)
     addBox:SetPoint("TOPLEFT", 10, y)
@@ -528,7 +544,7 @@ local function build()
     for _, key in ipairs({ "cds", "utilities", "buffs" }) do
         local b = flatButton(opts, "+ " .. (key == "cds" and "CD" or key == "utilities" and "Util" or "Buff"), 54, 22, function()
             local id = CDM.Resolve(addBox:GetText())
-            if not id then return end
+            if not id or (id < 0 and key == "buffs") then return end
             local list = db()[key]
             if not CDM.Contains(list, id) then list[#list + 1] = id end
             addBox:SetText("")

@@ -455,6 +455,25 @@ SlashCmdList.FOREVERBEACON = function(msg)
             end
         end
 
+    elseif cmd == "target" then
+        -- A paste-ready line for tools\questie_overlay.py's manual_quests.csv:
+        -- npc_id, name, map, x, y (x/y as the 0-100 numbers the map shows).
+        -- Stand on the NPC: the position recorded is yours, not theirs.
+        local guid = UnitGUID and UnitGUID("target")
+        if not guid or (issecretvalue and issecretvalue(guid)) then
+            ns.printf("target an NPC first (out of combat).")
+        else
+            local kind, id = ns.ParseGUID(guid)
+            local pos = ns.Pos()
+            if kind ~= "Creature" or not id then
+                ns.printf("that is a %s, not an NPC.", tostring(kind))
+            elseif not pos.x then
+                ns.printf("no map position available here.")
+            else
+                ns.printf("%d,%s,%d,%.1f,%.1f   (%s)", id, tostring(UnitName("target")), pos.map, pos.x * 100, pos.y * 100, tostring(pos.zone))
+            end
+        end
+
     elseif cmd == "mouse" then
         -- What is drawing under the cursor? Every frame with mouse focus, its
         -- debug name, and its parent chain. Run it while hovering the thing.
@@ -642,6 +661,7 @@ local HELP = {
     { "/fb errors",          "collector failures (which API was missing) and Lua error count" },
     { "/fb frame <Name>",    "why can't I see this frame: shown/alpha/scale/size/anchors/hidden ancestor" },
     { "/fb mouse",           "list every frame under the cursor with its parent chain" },
+    { "/fb target",          "npc_id,name,map,x,y of your target, ready to paste into the Questie overlay CSV" },
     { "/fb bagtest",         "call ToggleAllBags under pcall and report what happened" },
     { "/fb cdm",             "what Blizzard's Cooldown Manager tracks per category, and what the viewers/EUI bars hold" },
     { "/fb probe",           "re-run the API probe (after opening a new Blizzard panel)" },

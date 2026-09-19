@@ -92,7 +92,7 @@ Loads first (`!!` prefix) and does three jobs:
 A Wowhead-Looter-style harvester: API probe, event firehose, NPCs, vendors, trainers, gossip,
 taxi, item and spell tooltips, loot, objects, spellbook, talents and Legacy trees, auras, quests
 with positions. `tools/fb_extract.py` turns the SavedVariables payload into CSV/JSONL. Also carries
-the diagnostic commands used for the findings above (`/fb bugs`, `/fb frame`, `/fb mouse`, `/fb cdm`, `/fb help`).
+the diagnostic commands used for the findings above (`/fb bugs`, `/fb frame`, `/fb mouse`, `/fb target`, `/fb cdm`, `/fb help`).
 
 ### FBSVTest
 The small test addon that proved the saved-variables bug: it logs a pre-seeded global at every lifecycle
@@ -111,6 +111,7 @@ point from main chunk to logout. Kept for reproduction.
 | `sv_diff.py` | Structural diff of two SavedVariables files. |
 | `read_bugs.py` | Print BugGrabber's errors from disk. |
 | `fb_extract.py`, `Sync-ForeverBeacon.ps1` | ForeverBeacon extraction and scheduled archive. |
+| `questie_overlay.py` | Feed Questie the Forever quests it lacks, from ForeverBeacon's harvest plus a hand-edited CSV. Generates records in the shape Questie used for Season of Discovery, patches in the injection call, and hashes the overlay into Questie's version string so its database recompiles when your data changes. Needs Questie's `feature/forever` branch installed. |
 
 The tools find the kit's own files (`data/forever_api.json`, `addons/ForeverCompat`) relative to
 themselves. What you must edit is the WoW install path at the top of each script, and the

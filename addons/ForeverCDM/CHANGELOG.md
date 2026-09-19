@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0 (2026-09-18)
+- **Items on your bars.** Trinkets, potions, bandages, engineering gadgets: anything with a Use
+  effect. The Spellbook card has a new Items group listing every usable item you are wearing or
+  carrying, so there is nothing to look up. Items show their cooldown, their stack count, and dim
+  when you have run out or unequipped them.
+- You can also add one with `/fcdm add item:6948`, an item name, or a pasted item link.
+- Items go on the Cooldowns or Utility bar. The Buffs bar watches auras, so item rows do not offer it.
+
 ## 0.4.0 (2026-09-18)
 - **Your setup can now survive a game restart on the beta.** The Forever beta client saves addon
   settings and never loads them back, so every addon starts from defaults. Tick "Keep settings in

@@ -18,15 +18,17 @@ local function object(kind, name, parent)
     return f
 end
 for _, name in ipairs({ 'SetTexCoord', 'SetMovable', 'SetClampedToScreen',
-    'SetDrawEdge', 'SetHideCountdownNumbers', 'SetDesaturated', 'SetCooldown',
-    'SetCooldownFromDurationObject', 'Clear', 'SetAllPoints', 'SetColorTexture',
+    'SetDrawEdge', 'SetHideCountdownNumbers', 'SetDesaturated',
+    'SetCooldownFromDurationObject', 'SetAllPoints', 'SetColorTexture',
     'RegisterForDrag', 'StartMoving', 'StopMovingOrSizing', 'SetFrameStrata',
     'SetBackdrop', 'SetBackdropColor', 'SetJustifyH', 'SetAutoFocus', 'SetOwner',
     'SetSpellByID', 'SetVerticalScroll', 'SetScrollStep', 'SetEnabled',
     -- used by the flat widget kit and the minimap button
     'SetTextColor', 'SetFontString', 'SetCheckedTexture', 'SetFontObject', 'SetTextInsets', 'ClearFocus',
     'EnableMouseWheel', 'SetVertexColor', 'SetFrameLevel', 'RegisterForClicks', 'SetHighlightTexture',
-    'SetToplevel', 'SetAtlas', 'AddLine' }) do methods[name] = noop end
+    'SetToplevel', 'SetAtlas', 'AddLine', 'SetItemByID' }) do methods[name] = noop end
+function methods:SetCooldown(start, dur) self.cdStart, self.cdDur = start, dur end
+function methods:Clear() self.cdStart, self.cdDur = nil, nil end
 function methods:GetVerticalScroll() return 0 end
 function methods:GetVerticalScrollRange() return 0 end
 function methods:GetCenter() return 0, 0 end
@@ -77,6 +79,25 @@ C_Spell = {
     GetSpellCharges = function() return nil end,
 }
 C_UnitAuras = { GetPlayerAuraBySpellID = function() return nil end }
+-- Items: a potion stack in the bags (usable), a trinket worn (usable), and cloth (not usable).
+local POTION, TRINKET, CLOTH = 118, 11122, 2589
+local itemNames = { [POTION] = 'Minor Healing Potion', [TRINKET] = 'Carrot on a Stick', [CLOTH] = 'Linen Cloth' }
+local itemCount = { [POTION] = 5, [TRINKET] = 1, [CLOTH] = 20 }
+local itemCD = {}
+C_Item = {
+    GetItemNameByID = function(id) return itemNames[id] end,
+    GetItemIconByID = function(id) return id end,
+    GetItemSpell = function(id) if id ~= CLOTH then return 'Use', 1 end end,
+    GetItemCount = function(id) return itemCount[id] or 0 end,
+    GetItemInfoInstant = function(name) for id, n in pairs(itemNames) do if n == name then return id end end end,
+    RequestLoadItemDataByID = function() end,
+}
+C_Container = {
+    GetItemCooldown = function(id) local c = itemCD[id] if c then return c[1], c[2], 1 end return 0, 0, 1 end,
+    GetContainerNumSlots = function(bag) return bag == 0 and 2 or 0 end,
+    GetContainerItemID = function(bag, slot) return ({ POTION, CLOTH })[slot] end,
+}
+GetInventoryItemID = function(_, slot) if slot == 13 then return TRINKET end end
 C_SpellBook = {
     GetNumSpellBookSkillLines = function() return 1 end,
     GetSpellBookSkillLineInfo = function() return { itemIndexOffset = 0, numSpellBookItems = #spells, name = 'Paladin' } end,
@@ -165,6 +186,39 @@ assert(r1.id == 101 and r2.id == 104, 'rank labels are on the wrong spells')
 assert(r1.point[5] > r2.point[5], 'Rank 1 should be listed above Rank 2')
 assert(ForeverCDM.SpellRank(102) == nil and ForeverCDM.RankNumber(104) == 2, 'rank lookup wrong')
 
+-- Items: usable gear and bag items are offered, junk is not, and they cannot go on the Buffs bar.
+local potionRow, trinketRow, clothRow
+for _, f in ipairs(frames) do
+    if f.cd and f.utility and f.id == -POTION then potionRow = f end
+    if f.cd and f.utility and f.id == -TRINKET then trinketRow = f end
+    if f.cd and f.utility and f.id == -CLOTH then clothRow = f end
+end
+assert(potionRow and trinketRow, 'usable items from bags and gear should be listed')
+assert(not clothRow, 'an item with no Use effect should not be listed')
+assert(potionRow.name:GetText() == 'Minor Healing Potion', 'item row shows the wrong name')
+assert(not potionRow.buff:IsShown(), 'an item row should not offer the Buffs bar')
+potionRow.cd:SetChecked(true)
+potionRow.cd.scripts.OnClick(potionRow.cd)
+assert(ForeverCDM.Contains(ForeverCDMDB.cds, -POTION), 'ticking an item did not add it')
+local potionIcon
+for _, f in ipairs(frames) do if f.spellID == -POTION and f.parent == ForeverCDM_cds then potionIcon = f end end
+assert(potionIcon and potionIcon.icon.texture == POTION, 'item icon was not created on the bar')
+assert(potionIcon.count.textValue == 5 and potionIcon.alpha == 1, 'stack count or ready state wrong')
+itemCD[POTION] = { 100, 120 }
+fire('BAG_UPDATE_COOLDOWN')
+assert(potionIcon.cd.cdStart == 100 and potionIcon.cd.cdDur == 120, 'item cooldown was not drawn')
+itemCount[POTION], itemCD[POTION] = 0, nil
+fire('BAG_UPDATE_DELAYED')
+assert(potionIcon.alpha == 0.35 and potionIcon.count.textValue == '', 'an item you have run out of should be dimmed')
+itemCount[POTION] = 5
+SlashCmdList['FOREVERCDM']('addbuff item:' .. TRINKET)
+assert(not ForeverCDM.Contains(ForeverCDMDB.buffs, -TRINKET), 'an item was allowed onto the Buffs bar')
+SlashCmdList['FOREVERCDM']('addutility Carrot on a Stick')
+assert(ForeverCDM.Contains(ForeverCDMDB.utilities, -TRINKET), 'adding an item by name failed')
+SlashCmdList['FOREVERCDM']('remove item:' .. TRINKET)
+assert(not ForeverCDM.Contains(ForeverCDMDB.utilities, -TRINKET), 'removing an item failed')
+SlashCmdList['FOREVERCDM']('remove item:' .. POTION)
+
 -- Spell rows are grouped under one heading per spellbook tab.
 local headings = 0
 for _, f in ipairs(frames) do
@@ -196,4 +250,4 @@ assert(ForeverCDMDB.minimap.hide == true and not mm:IsShown(), '/fcdm minimap di
 SlashCmdList['FOREVERCDM']('minimap')
 assert(ForeverCDMDB.minimap.hide == false and mm:IsShown(), '/fcdm minimap did not show it again')
 
-print('runtime migration, config, learned-spell refresh, utility, grouping and minimap checks passed')
+print('runtime migration, config, learned-spell refresh, utility, items, grouping and minimap checks passed')
