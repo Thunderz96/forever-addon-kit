@@ -91,7 +91,14 @@ ns.On("QUEST_ACCEPTED", function(a, b)
     end
     local rec = questRec(questID, title)
     rec.accepted = (rec.accepted or 0) + 1
-    rec.level = rec.level or UnitLevel("player")
+    -- Two different numbers, kept apart. Until 0.3.12 the player's level was
+    -- written into rec.level here, so a quest handed in before the next login
+    -- scan kept the player's level as if it were its own.
+    rec.acceptLevel = rec.acceptLevel or UnitLevel("player")     -- how high you were when you took it
+    if C_QuestLog and C_QuestLog.GetQuestDifficultyLevel then
+        local ok, lvl = pcall(C_QuestLog.GetQuestDifficultyLevel, questID)
+        if ok and type(lvl) == "number" and lvl > 0 then rec.level = lvl rec.levelSource = "quest" end
+    end
     if C_QuestLog and C_QuestLog.GetQuestObjectives then
         local ok, objs = pcall(C_QuestLog.GetQuestObjectives, questID)
         if ok and type(objs) == "table" then
@@ -170,6 +177,7 @@ local function dumpQuestLog()
             if info and not info.isHeader and info.questID then
                 local rec = questRec(info.questID, info.title)
                 rec.level = info.level
+                rec.levelSource = "quest"
                 rec.header = info.campaignID and ("campaign:" .. info.campaignID) or rec.header
             end
         end
@@ -182,6 +190,7 @@ local function dumpQuestLog()
             elseif questID and questID > 0 then
                 local rec = questRec(questID, title)
                 rec.level = level
+                rec.levelSource = "quest"
                 rec.header = header
                 rec.frequency = frequency
             end
