@@ -220,6 +220,30 @@ REGEX_PATCHES = [
 ]
 
 
+# Patches for the OFFICIAL Forever-aware EllesmereUI (9.2+). Applied only to that build.
+NATIVE_PATCHES = [
+    # 9.2.1 deliberately sets every one of its SavedVariables to nil at logout on Forever
+    # ("nothing of ours reaches disk while the beta loses settings"). Sensible for a stock
+    # client, fatal with sv_bridge.py: the bridge needs the file the client writes. Skip
+    # only that logout wipe; the rest of FOREVER_SV_BUG (pickers off, login notice) stays.
+    ("EllesmereUI\\EllesmereUI_Lite.lua",
+     "if EllesmereUI.FOREVER_SV_BUG then\n    local STORES = {",
+     "if false and EllesmereUI.FOREVER_SV_BUG then -- " + TAG
+     + ": sv_bridge.py restores settings, so let them be written\n    local STORES = {"),
+]
+
+
+def eui_is_native():
+    """EllesmereUI 9.2+ supports Forever itself (its TOC lists 16001 and it ships its own
+    Forever character sheet). Patching that build would fight its code, so leave it alone."""
+    toc = os.path.join(ADDONS, "EllesmereUI", "EllesmereUI.toc")
+    try:
+        head = open(toc, encoding="utf-8", errors="replace").read(2000)
+    except OSError:
+        return False
+    return any("16001" in line for line in head.splitlines() if line.startswith("## Interface"))
+
+
 def apply_regex_patches():
     ok = True
     for rel, pat, repl, flags in REGEX_PATCHES:
@@ -243,6 +267,11 @@ def apply_regex_patches():
 
 
 def main():
+    global PATCHES, REGEX_PATCHES
+    if eui_is_native():
+        print("EllesmereUI here supports Forever natively: skipping every EllesmereUI patch.")
+        PATCHES = [p for p in PATCHES if not p[0].startswith("EllesmereUI")] + NATIVE_PATCHES
+        REGEX_PATCHES = [p for p in REGEX_PATCHES if not p[0].startswith("EllesmereUI")]
     ok = apply_regex_patches()
     for rel, old, new in PATCHES:
         path = os.path.join(ADDONS, rel)

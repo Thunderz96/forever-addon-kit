@@ -173,15 +173,21 @@ local function spellbookSpells()
             end
         end
     end
-    -- usable items you are wearing or carrying: anything with a "Use:" effect
+    -- items you are wearing or carrying that are worth an icon: anything with a "Use:" effect,
+    -- and ammunition (no Use effect, but the stack count on the icon is the whole point)
+    local AMMO = (Enum and Enum.ItemClass and Enum.ItemClass.Projectile) or 6
+    local function isAmmo(itemID)
+        local get = C_Item and C_Item.GetItemInfoInstant
+        return get and select(6, get(itemID)) == AMMO
+    end
     local function offer(itemID)
-        if itemID and not seen[-itemID] and C_Item and C_Item.GetItemSpell and C_Item.GetItemSpell(itemID) then
+        if itemID and not seen[-itemID] and C_Item and ((C_Item.GetItemSpell and C_Item.GetItemSpell(itemID)) or isAmmo(itemID)) then
             seen[-itemID] = true
             out[#out + 1] = { id = -itemID, name = CDM.SpellName(-itemID), tab = "Items" }
         end
     end
     if GetInventoryItemID then
-        for slot = 1, 19 do offer(GetInventoryItemID("player", slot)) end
+        for slot = 0, 19 do offer(GetInventoryItemID("player", slot)) end
     end
     if C_Container and C_Container.GetContainerNumSlots then
         for bag = 0, 4 do

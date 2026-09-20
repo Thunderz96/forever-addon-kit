@@ -30,6 +30,8 @@ USAGE
   python questie_overlay.py            build and install the overlay
   python questie_overlay.py --dry-run  show what would be included, change nothing
   python questie_overlay.py --remove   take the overlay and the patches back out
+  python questie_overlay.py --no-tracker   also force Questie's tracker off (its own checkbox reloads the UI,
+                                           which this client's settings bug undoes); --tracker brings it back
 
 manual_quests.csv columns (created with a header if missing):
   quest_id, title, quest_level, required_level, faction (H, A, or blank = both),
@@ -424,10 +426,12 @@ def build():
         resolved = len(creatures) + len(objects) + len(items)
         if resolved < total:
             creatures, objects, items = [], [], []
-        if no_ends and not (creatures or objects or items):
-            # Nothing Questie could draw: no start, no turn-in, no objective with a target.
-            report.append((qid, q["title"], "skipped", "no quest giver, turn-in or resolvable objective yet", ""))
+        if no_ends and not (creatures or objects or items) and not q.get("quest_level"):
+            # Nothing to draw AND no real level: not worth a record.
+            report.append((qid, q["title"], "skipped", "no quest giver, turn-in, objective target or real level yet", ""))
             continue
+        # With a real level but nothing to draw it still goes in: Questie's tracker and tooltips only
+        # list quests its database knows, so a title-and-level record makes the quest appear there.
         level = q.get("quest_level") or q.get("level_guess") or 1
         guessed = not q.get("quest_level")
         q_out = dict(q)
@@ -442,7 +446,7 @@ def build():
         else:
             note = "all %d objectives included%s" % (total, (" (%d matched by name)" % named) if named else "")
         report.append((qid, q["title"], "included",
-                       (" + ".join(w for w in ("giver", "ender") if w in ends) or "objectives only") + (" (level is a guess)" if guessed else ""),
+                       (" + ".join(w for w in ("giver", "ender") if w in ends) or ("objectives only" if (creatures or objects or items) else "tracker only, no pins")) + (" (level is a guess)" if guessed else ""),
                        note, ", ".join(data.notes[qid])))
     return out, report
 
@@ -548,12 +552,58 @@ def write(path, text):
         f.write(text)
 
 
-def install(body, remove=False):
+# Small fixes to Questie's own code for this client, applied and removed with the overlay.
+# (relative path, exact text to find, replacement). Each is skipped if already in place.
+FIXES = [
+    # In combat the client hands tooltip text to addons as a "secret" string, and comparing one
+    # throws. Questie's tooltip OnUpdate compares line 1 every frame: hundreds of errors a fight.
+    (os.path.join("Modules", "Tooltips", "Tooltip.lua"),
+     "            local uName, unit = self:GetUnit()\n",
+     "            if issecretvalue and issecretvalue(GameTooltipTextLeft1:GetText()) then return end -- FOREVER-FIX: secret in combat\n"
+     "            local uName, unit = self:GetUnit()\n"),
+]
+
+# Opt-in: applied with --no-tracker, kept on later runs once applied, undone with --tracker.
+OPTIONAL_FIXES = [
+    # Questie's tracker forced OFF, for people who use another tracker (EllesmereUI's, say).
+    # The in-game checkbox cannot do it here: it saves the setting and calls ReloadUI(), and on
+    # this client the reload loads the OLD settings seed, so the tracker comes straight back.
+    (os.path.join("Modules", "Tracker", "QuestieTracker.lua"),
+     "    if (not Questie.db.profile.trackerEnabled) then\n        -- The Tracker is disabled, no need to continue\n",
+     "    Questie.db.profile.trackerEnabled = false -- FOREVER-FIX: tracker forced off, see tools/questie_overlay.py\n"
+     "    if (not Questie.db.profile.trackerEnabled) then\n        -- The Tracker is disabled, no need to continue\n"),
+]
+
+
+def apply_fixes(remove=False, argv=()):
+    jobs = [(f, remove) for f in FIXES]
+    for f in OPTIONAL_FIXES:
+        if remove or "--tracker" in argv:
+            jobs.append((f, True))
+        elif "--no-tracker" in argv:
+            jobs.append((f, False))          # neither flag: leave it however it already is
+    for (rel, old, new), remove in jobs:
+        path = os.path.join(QUESTIE, rel)
+        text = read(path)
+        nl = "\r\n" if "\r\n" in text else "\n"
+        old_n, new_n = old.replace("\n", nl), new.replace("\n", nl)
+        if remove:
+            text = text.replace(new_n, old_n)
+        elif new_n not in text:
+            if text.count(old_n) != 1:
+                print("   fix skipped, expected text not found once in " + rel)
+                continue
+            text = text.replace(old_n, new_n, 1)
+        write(path, text)
+
+
+def install(body, remove=False, argv=()):
     corrections = os.path.join(QUESTIE, "Database", "Corrections", "QuestieCorrections.lua")
     lib = os.path.join(QUESTIE, "Modules", "Libs", "QuestieLib.lua")
     toc = os.path.join(QUESTIE, "Questie-Camelot.toc")
     overlay = os.path.join(QUESTIE, OVERLAY_REL)
 
+    apply_fixes(remove, argv)
     text = BLOCK_RE.sub("", read(corrections))          # drop any earlier version of the block
     if not remove:
         if CORRECTIONS_ANCHOR not in text:
@@ -616,7 +666,7 @@ def main(argv):
     if "--dry-run" in argv:
         print("dry run: nothing was changed.")
         return
-    install(body)
+    install(body, argv=argv)
     print("installed into Questie. First time: fully restart the game. Afterwards: /reload. "
           "Questie will say its DB is updating once.")
 

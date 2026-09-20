@@ -221,4 +221,18 @@ end)
 define("StaticPopup_Resize", function() end)               -- modern popups size themselves
 define("GetStablePetFoodTypes", function() end)            -- hunter pet diet list; no modern equivalent, so "none"
 
+-- NOT worked around here, on purpose: opening Edit Mode on a character with few spells errors
+-- in Blizzard's IconDataProvider.lua:144 (BaseIconFilenames is nil). Keeping a provider alive
+-- from addon code fixes that error but builds Blizzard's shared icon list from tainted
+-- execution, so everything Edit Mode does afterwards runs tainted and its unit frames then
+-- fail on secret health values (PartyMemberFrame.lua:655). The harmless error is the better deal.
+
+-- Classic's quest greeting window had 32 fixed rows, QuestTitleButton1..32, and a global
+-- saying so. The modern greeting builds its rows from a pool with no global names, so
+-- neither exists here. Questie loops "for i = 1, MAX_NUM_QUESTS" over them at every
+-- greeting and errors on the nil limit. Zero makes those loops do nothing: the only loss
+-- is Questie's own icons inside the greeting window. (32 would make it print three
+-- "Frame error!" lines every time you talk to a multi-quest NPC.)
+if MAX_NUM_QUESTS == nil then MAX_NUM_QUESTS = 0 end
+
 ForeverCompat_Loaded = true
