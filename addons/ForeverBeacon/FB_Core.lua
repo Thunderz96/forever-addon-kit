@@ -461,6 +461,12 @@ SlashCmdList.FOREVERBEACON = function(msg)
     elseif cmd == "sweep" then
         if ns.Sweep then ns.Sweep(rest) end
 
+    elseif cmd == "range" then
+        if ns.Range then ns.Range(rest) end
+
+    elseif cmd == "fight" then
+        if ns.Fight then ns.Fight(rest) end
+
     elseif cmd == "target" then
         -- A paste-ready line for tools\questie_overlay.py's manual_quests.csv:
         -- npc_id, name, map, x, y (x/y as the 0-100 numbers the map shows).
@@ -669,6 +675,8 @@ local HELP = {
     { "/fb mouse",           "list every frame under the cursor with its parent chain" },
     { "/fb target",          "npc_id,name,map,x,y of your target, ready to paste into the Questie overlay CSV" },
     { "/fb zonequests [map]","quests the client says are on offer on a map (default: where you stand), plus their chains" },
+    { "/fb fight",           "after your next fight, report which combat numbers (health, damage in/out) an addon can read" },
+    { "/fb range [log|stop|dump]", "which range checks answer on this client, and whether combat makes them secret (hunter dead zone groundwork)" },
     { "/fb sweep <a> <b>",   "ask the server for every quest ID in a range, slowly; fills the WDB cache. /fb sweep stop" },
     { "/fb bagtest",         "call ToggleAllBags under pcall and report what happened" },
     { "/fb cdm",             "what Blizzard's Cooldown Manager tracks per category, and what the viewers/EUI bars hold" },

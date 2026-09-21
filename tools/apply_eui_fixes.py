@@ -230,6 +230,18 @@ NATIVE_PATCHES = [
      "if EllesmereUI.FOREVER_SV_BUG then\n    local STORES = {",
      "if false and EllesmereUI.FOREVER_SV_BUG then -- " + TAG
      + ": sv_bridge.py restores settings, so let them be written\n    local STORES = {"),
+    # Resource Bars picks the power bar's resource from a Retail class table (hunter = Focus).
+    # Forever hunters use mana, so the bar tracked a resource with a maximum of 0 and never
+    # showed. On Forever ask the client what the player actually uses: right for every class
+    # and for druid forms, with no table to keep in step.
+    ("EllesmereUIResourceBars\\EllesmereUIResourceBars.lua",
+     "local function GetPrimaryPowerType()\n    local _, classFile = UnitClass(\"player\")\n",
+     "local function GetPrimaryPowerType()\n"
+     "    if EllesmereUI.IS_FOREVER then -- " + TAG + ": Retail's class table is wrong here (hunters use mana)\n"
+     "        local live = UnitPowerType(\"player\")\n"
+     "        if type(live) == \"number\" then return live end\n"
+     "    end\n"
+     "    local _, classFile = UnitClass(\"player\")\n"),
 ]
 
 
