@@ -1,5 +1,46 @@
 # Changelog
 
+## 0.7.1 (2026-09-21)
+- **Debuffs applied before the pull now keep their timer in combat.** Hunter's Mark (and anything
+  else you put on a mob before engaging) was readable out of combat, so the addon dropped its own
+  estimate, then had nothing left once combat hid the aura. The real start time is kept per target
+  instead.
+- **Openers are tracked.** A debuff cast while the target's auras were still readable (the first
+  Serpent Sting of a fight) was cleared before the aura had landed. A fresh cast now gets a second
+  to land.
+- `/fcdm probe <spell>` also reports what the addon can see on your target.
+
+## 0.7.0 (2026-09-21)
+- **Edit Mode support** (contributed by shuyu42, PR #1):
+- Confirm row attachment/detachment in chat, list only visible anchor targets, and
+  distinguish duplicate menu labels. Skip hidden or unreadable visibility results
+  safely in both the anchor menu and snapping.
+- Respect Edit Mode's Enable Snap setting: show alignment guides while dragging,
+  snap nearby centres/edges on drop, and hold Shift to bypass. Existing frame
+  anchors retain the corrected offset.
+- Right-click a row handle in Edit Mode to anchor it to a Blizzard frame or another
+  addon row. Preserve offsets while dragging, allow detaching, reject circular
+  anchors, and restore frame targets through saved settings and the settings macro.
+- Show draggable handles for all four rows in the game's Edit Mode, including empty
+  and locked rows. Keep the normal lock preference and disable dragging in combat.
+- Save dropped positions in UIParent coordinates and retain the existing settings
+  macro support. Row positions remain shared across Blizzard layouts and save on drop.
+
+## 0.6.0 (2026-09-20)
+- **Debuffs bar.** A fourth row for your own debuffs on your current target: Serpent Sting,
+  Hunter's Mark, Rend, Corruption... Tick the new DEBUFF box in the Spellbook card, or
+  `/fcdm adddebuff Serpent Sting`. Any rank of the spell lights the icon.
+- In combat, where the client hides auras from addons, the timer runs from your own cast and is
+  remembered per target, so swapping back to a mob brings its timer back. A cast that misses or is
+  resisted still starts the timer; the real aura replaces it whenever it can be read.
+- If the addon cannot work out how long a debuff lasts, `/fcdm duration <spell> <seconds>` sets it.
+- **Hide inactive auras** (Settings card, or `/fcdm hideinactive on`). Off, as before, a buff that is
+  not up stays on its bar dimmed. On, buffs and debuffs only appear while they are up, so a proc
+  shows when it happens, and the visible icons close the gaps. Unlocking the rows shows everything
+  again so there is something to drag.
+- Each icon in the Bars card has an **x** to remove it, so a spell added by a mistyped ID is easy to
+  get rid of.
+
 ## 0.5.0 (2026-09-18)
 - **Items on your bars.** Trinkets, potions, bandages, engineering gadgets: anything with a Use
   effect. The Spellbook card has a new Items group listing every usable item you are wearing or

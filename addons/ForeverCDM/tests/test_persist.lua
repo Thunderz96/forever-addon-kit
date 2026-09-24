@@ -23,6 +23,7 @@ for _, name in ipairs({ 'SetTexCoord', 'ClearAllPoints', 'SetMovable', 'SetClamp
     'SetText' }) do methods[name] = noop end
 function methods:SetSize(w, h) self.width, self.height = w, h end
 function methods:GetWidth() return self.width or 100 end
+function methods:GetEffectiveScale() return 1 end
 function methods:SetScript(k, fn) self.scripts[k] = fn end
 function methods:RegisterEvent(e) self.events[e] = true end
 function methods:RegisterUnitEvent(e) self.events[e] = true end
@@ -142,6 +143,19 @@ assert(db.buffDurations[201] == 1800, 'learned buff duration was lost')
 assert(db.macroMirror == true, 'the macro existing should switch the option back on')
 assert(not said('Keep settings in a macro'), 'no hint needed once opted in')
 
+-- Anchors survive the macro round trip even when their target loads later.
+db.anchors.buffs = { 'LateAnchorFrame', 12.3, -45.6 }
+slash('lock')
+db = session(nil)
+assert(db.anchors.buffs[1] == 'LateAnchorFrame' and db.anchors.buffs[2] == 12.3
+    and db.anchors.buffs[3] == -45.6, 'frame anchor lost in macro round trip')
+assert(db.pos.buffs[1] == 'TOPLEFT' and db.pos.buffs[2] == 123.4,
+    'saving an anchor overwrote its screen fallback')
+db.anchors.buffs = nil
+slash('lock')
+db = session(nil)
+assert(db.anchors.buffs == nil, 'detached anchor returned after restart')
+
 -- 3. Cold start where the macro list arrives AFTER login. Nothing may be written
 --    before it is read, or the stored setup would be replaced by defaults.
 macrosLoaded = false
@@ -236,11 +250,30 @@ slash('store 1/1 anything')
 assert(said('clicking it does nothing'), 'the macro click handler is missing')
 
 -- 13. A client without the macro API: everything still loads.
+local savedCreateMacro = CreateMacro
 CreateMacro = nil
 db = session(nil)
 slash('add 5')
 slash('mirror on')
 slash('mirror')
 assert(db.cds[1] == 5 and said('no macro API'), 'addon should run without the mirror')
+
+-- 14. On the Forever client a character with no macro is warned at login, once, and a
+-- character whose macro is on (or any other client) is not.
+CreateMacro, macros = savedCreateMacro, {}
+GetBuildInfo = function() return '1.60.1', '69913', 'Sep 18 2026', 16001 end
+db = session(nil)
+assert(said('NOT being kept'), 'a Forever character without the macro should be warned at login')
+printed = {}
+slash('add 7')
+assert(not said('Keep settings in a macro') or not said('heads up'), 'the change hint should not repeat the login warning')
+slash('mirror on')
+db = session(nil)
+assert(not said('NOT being kept'), 'no warning once the macro is on')
+macros = {}
+GetBuildInfo = function() return '12.1.0', '70000', 'Sep 1 2026', 120100 end
+db = session(nil)
+assert(not said('NOT being kept'), 'an empty load on a working client is only a first install')
+GetBuildInfo = nil
 
 io.write('settings macro: opt-in, restart, late macro list, combat, chunking, per-character and fallback checks passed\n')

@@ -6,6 +6,11 @@ Four posts for the Forever beta bug report / general discussion forum. Each is c
 
 ## Post 1: Secure handler snippets cannot compile: loadstring_untainted is nil
 
+> **Fixed in build 1.60.1.70009 (2026-09-24). Kept for the record; do not post.** The cause was load order
+> ([forever-bugs #74](https://github.com/ClassicWoWCommunity/forever-bugs/issues/74)): `Blizzard_EnvironmentCleanup` deletes
+> `loadstring_untainted` and ran before the restricted environment captured it, because its dependency on that addon applied
+> only to the Classic and Standard game types. The global is nil after load on every client, so do not test for it.
+
 **Build:** 1.60.1.69893, 2026-09-17
 
 **Steps:**

@@ -46,6 +46,8 @@ local function outline(frame, c, a)
     strip("TOPRIGHT", "BOTTOMRIGHT", false)
 end
 
+local MIRROR_WHY = "The beta client forgets addon settings when the game restarts. This saves your setup in one general macro and reads it back at login."
+
 local function text(parent, font, str, c)
     local fs = parent:CreateFontString(nil, "OVERLAY", font or "GameFontHighlightSmall")
     if str then fs:SetText(str) end
@@ -196,7 +198,7 @@ local function spellbookSpells()
     end
     -- anything tracked that is not in the book (added by ID) still needs a row
     local d = db()
-    for _, key in ipairs({ "cds", "utilities", "buffs" }) do
+    for _, key in ipairs({ "cds", "utilities", "buffs", "debuffs" }) do
         for _, id in ipairs(d[key]) do
             if not seen[id] then
                 seen[id] = true
@@ -221,7 +223,8 @@ local function nameWithRank(id, name)
 end
 
 local ROW_H, HEAD_H, ORDER_H = 24, 22, 26
-local BAR_NAMES = { cds = "Cooldowns", utilities = "Utility", buffs = "Buffs" }
+local BAR_NAMES = { cds = "Cooldowns", utilities = "Utility", buffs = "Buffs", debuffs = "Debuffs" }
+local TAB_NAMES = { cds = "CDs", utilities = "Utility", buffs = "Buffs", debuffs = "Debuffs" }   -- four tabs share 206px
 local rowsPool, headPool, orderPool = {}, {}, {}
 local refreshList
 
@@ -243,12 +246,16 @@ local function refreshOrderList()
             row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
             row.name = text(row, "GameFontHighlightSmall")
             row.name:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
-            row.name:SetPoint("RIGHT", row, "RIGHT", -50, 0)
+            row.name:SetPoint("RIGHT", row, "RIGHT", -72, 0)
             row.name:SetJustifyH("LEFT")
             row.down = arrowButton(row, "minimal-scrollbar-arrow-bottom", "v")
             row.down:SetPoint("RIGHT", -2, 0)
             row.up = arrowButton(row, "minimal-scrollbar-arrow-top", "^")
             row.up:SetPoint("RIGHT", row.down, "LEFT", -2, 0)
+            -- Remove from this bar. The only way out for an entry added by a mistyped
+            -- ID, which can be hard to find (or tell apart) in the spellbook list.
+            row.remove = flatButton(row, "x", 20, 20)
+            row.remove:SetPoint("RIGHT", row.up, "LEFT", -2, 0)
             orderPool[i] = row
         end
         row.index = i
@@ -261,6 +268,10 @@ local function refreshOrderList()
             local index = self:GetParent().index
             if index > 1 then current[index], current[index - 1] = current[index - 1], current[index] end
             CDM.Refresh(); refreshOrderList()
+        end)
+        row.remove:SetScript("OnClick", function(self)
+            table.remove(db()[key], self:GetParent().index)
+            CDM.Refresh(); refreshList()
         end)
         row.down:SetScript("OnClick", function(self)
             local current = db()[key]
@@ -297,11 +308,12 @@ local function newSpellRow(content)
     r.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
     r.name = text(r, "GameFontHighlight")
     r.name:SetPoint("LEFT", r.icon, "RIGHT", 8, 0)
-    r.name:SetPoint("RIGHT", r, "RIGHT", -130, 0)
+    r.name:SetPoint("RIGHT", r, "RIGHT", -170, 0)
     r.name:SetJustifyH("LEFT")
-    r.buff = checkbox(r)    r.buff:SetPoint("CENTER", r, "RIGHT", -22, 0)
-    r.utility = checkbox(r) r.utility:SetPoint("CENTER", r, "RIGHT", -62, 0)
-    r.cd = checkbox(r)      r.cd:SetPoint("CENTER", r, "RIGHT", -102, 0)
+    r.debuff = checkbox(r)  r.debuff:SetPoint("CENTER", r, "RIGHT", -22, 0)
+    r.buff = checkbox(r)    r.buff:SetPoint("CENTER", r, "RIGHT", -62, 0)
+    r.utility = checkbox(r) r.utility:SetPoint("CENTER", r, "RIGHT", -102, 0)
+    r.cd = checkbox(r)      r.cd:SetPoint("CENTER", r, "RIGHT", -142, 0)
     local function toggle(key, id, on)
         local list = db()[key]
         local idx = CDM.Contains(list, id)
@@ -313,6 +325,7 @@ local function newSpellRow(content)
     r.cd:SetScript("OnClick", function(self) toggle("cds", self:GetParent().id, self:GetChecked()) end)
     r.utility:SetScript("OnClick", function(self) toggle("utilities", self:GetParent().id, self:GetChecked()) end)
     r.buff:SetScript("OnClick", function(self) toggle("buffs", self:GetParent().id, self:GetChecked()) end)
+    r.debuff:SetScript("OnClick", function(self) toggle("debuffs", self:GetParent().id, self:GetChecked()) end)
     r:EnableMouse(true)
     r:SetScript("OnEnter", function(self)
         self.hover:Show()
@@ -364,7 +377,9 @@ refreshList = function()
         r.cd:SetChecked(CDM.Contains(d.cds, s.id) ~= nil)
         r.utility:SetChecked(CDM.Contains(d.utilities, s.id) ~= nil)
         r.buff:SetChecked(CDM.Contains(d.buffs, s.id) ~= nil)
-        r.buff:SetShown(s.id > 0)          -- the Buffs bar watches auras; an item is not one
+        r.debuff:SetChecked(CDM.Contains(d.debuffs, s.id) ~= nil)
+        r.buff:SetShown(s.id > 0)          -- the Buffs and Debuffs bars watch auras; an item is not one
+        r.debuff:SetShown(s.id > 0)
         r:ClearAllPoints()
         r:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
         r:SetPoint("RIGHT", content, "RIGHT", 0, 0)
@@ -379,8 +394,17 @@ refreshList = function()
     setActive(win.lockBtn, not d.locked)
     win.hideReady:SetChecked(d.hideReady)
     win.names:SetChecked(d.showNames)
+    win.hideInactive:SetChecked(d.hideInactive and true or false)
     win.minimap:SetChecked(not d.minimap.hide)
     win.macroMirror:SetChecked(d.macroMirror and true or false)
+    -- Say so, in colour, while this character's setup would not survive a restart.
+    if CDM.SettingsAtRisk and CDM.SettingsAtRisk() then
+        win.mirrorWhy:SetText("NOT saved on this character yet. The beta client forgets addon settings on restart: tick this to keep your setup in a macro.")
+        win.mirrorWhy:SetTextColor(ACCENT[1], ACCENT[2], ACCENT[3])
+    else
+        win.mirrorWhy:SetText(MIRROR_WHY)
+        win.mirrorWhy:SetTextColor(0.5, 0.5, 0.5)
+    end
     refreshOrderList()
 end
 
@@ -425,7 +449,7 @@ local function build()
 
     -- left: spellbook
     local book = card(win, "SPELLBOOK", 14, 420, TOP, BOTTOM)
-    for label, offset in pairs({ CD = -116, UTIL = -76, BUFF = -36 }) do
+    for label, offset in pairs({ CD = -156, UTIL = -116, BUFF = -76, DEBUFF = -36 }) do
         local h = text(book, "GameFontNormalSmall", label, DIM)
         h:SetPoint("CENTER", book, "TOPRIGHT", offset, -15)
     end
@@ -440,11 +464,11 @@ local function build()
     local order = card(win, "BARS", 444, 222, TOP, BOTTOM)
     win.orderTabs = {}
     local tabX = 8
-    for _, key in ipairs({ "cds", "utilities", "buffs" }) do
-        local b = flatButton(order, BAR_NAMES[key], 68, 22, function() win.orderKey = key; refreshOrderList() end)
+    for _, key in ipairs({ "cds", "utilities", "buffs", "debuffs" }) do
+        local b = flatButton(order, TAB_NAMES[key], 50, 22, function() win.orderKey = key; refreshOrderList() end)
         b:SetPoint("TOPLEFT", tabX, -28)
         win.orderTabs[key] = b
-        tabX = tabX + 69
+        tabX = tabX + 52
     end
     win.orderTitle = text(order, "GameFontHighlightSmall", nil, DIM)
     win.orderTitle:SetPoint("TOPLEFT", 10, -58)
@@ -509,10 +533,20 @@ local function build()
     end
 
     win.hideReady = check("Hide ready cooldowns", function(self) db().hideReady = self:GetChecked() and true or false CDM.Refresh() end)
+    win.hideInactive = check("Hide inactive auras", function(self) db().hideInactive = self:GetChecked() and true or false CDM.Refresh() end)
+    win.hideInactive:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine("Hide inactive auras")
+        GameTooltip:AddLine("Off: a buff or debuff that is not up stays on its bar, dimmed.", 1, 1, 1, true)
+        GameTooltip:AddLine("On: it only appears while it is up, so a proc shows when it happens. Icons close the gaps. Everything is shown while the rows are unlocked.", 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    win.hideInactive:SetScript("OnLeave", function() GameTooltip:Hide() end)
     win.names = check("Show spell names", function(self) db().showNames = self:GetChecked() and true or false CDM.Refresh() end)
     win.minimap = check("Minimap button", function(self) ForeverCDM_SetMinimapShown(self:GetChecked() and true or false) end)
     win.macroMirror = check("Keep settings in a macro", function(self) ForeverCDM_SetMacroMirror(self:GetChecked() and true or false) end)
-    local why = text(opts, "GameFontDisableSmall", "The beta client forgets addon settings when the game restarts. This saves your setup in one general macro and reads it back at login.")
+    local why = text(opts, "GameFontDisableSmall", MIRROR_WHY)
+    win.mirrorWhy = why
     why:SetPoint("TOPLEFT", 34, y + 4)
     why:SetWidth(148)
     why:SetJustifyH("LEFT")
@@ -528,7 +562,7 @@ local function build()
     end)
     wide("Clear everything", function()
         local d = db()
-        wipe(d.cds) wipe(d.utilities) wipe(d.buffs)
+        wipe(d.cds) wipe(d.utilities) wipe(d.buffs) wipe(d.debuffs)
         CDM.Refresh()
         refreshList()
     end)
@@ -546,11 +580,11 @@ local function build()
     addBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     addBox:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
     y = y - 28
-    local addX = 10
-    for _, key in ipairs({ "cds", "utilities", "buffs" }) do
-        local b = flatButton(opts, "+ " .. (key == "cds" and "CD" or key == "utilities" and "Util" or "Buff"), 54, 22, function()
+    for i, key in ipairs({ "cds", "utilities", "buffs", "debuffs" }) do
+        local label = key == "cds" and "CD" or key == "utilities" and "Util" or key == "buffs" and "Buff" or "Debuff"
+        local b = flatButton(opts, "+ " .. label, 83, 22, function()
             local id = CDM.Resolve(addBox:GetText())
-            if not id or (id < 0 and key == "buffs") then return end
+            if not id or (id < 0 and (key == "buffs" or key == "debuffs")) then return end
             local list = db()[key]
             if not CDM.Contains(list, id) then list[#list + 1] = id end
             addBox:SetText("")
@@ -558,8 +592,7 @@ local function build()
             CDM.Refresh()
             refreshList()
         end)
-        b:SetPoint("TOPLEFT", addX, y)
-        addX = addX + 58
+        b:SetPoint("TOPLEFT", 10 + ((i - 1) % 2) * 87, y - math.floor((i - 1) / 2) * 26)
     end
 
     -- footer

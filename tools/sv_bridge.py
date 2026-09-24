@@ -51,7 +51,7 @@ LOG = os.path.join(HERE, "sv_bridge.log")
 # ForeverCDM parked 2026-09-18: it now keeps its own settings in an opt-in macro, and leaving it
 # bridged hides that path from testing. To re-enable: add "ForeverCDM" back and rename
 # seeds\ForeverCDM.lua.parked to ForeverCDM.lua in the installed !!ForeverCompat folder.
-BRIDGED = ["EllesmereUI", "BugSack", "SpeedyAutoLoot", "DialogueUI", "Questie"]
+BRIDGED = ["EllesmereUI", "BugSack", "SpeedyAutoLoot", "DialogueUI", "Questie", "RXPGuides"]
 EXE = "WowB.exe"
 
 TOC = """## Interface: 16001

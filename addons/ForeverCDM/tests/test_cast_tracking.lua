@@ -22,6 +22,7 @@ for _, name in ipairs({ 'SetTexCoord', 'ClearAllPoints', 'SetMovable', 'SetClamp
     'SetColorTexture', 'RegisterForDrag', 'SetPoint', 'SetTexture', 'EnableMouse' }) do methods[name] = noop end
 function methods:SetSize(w, h) self.width, self.height = w, h end
 function methods:GetWidth() return self.width or 100 end
+function methods:GetEffectiveScale() return 1 end
 function methods:SetText(t) self.textValue = t end
 function methods:SetAlpha(a) self.alpha = a end
 function methods:SetScript(k, fn) self.scripts[k] = fn end

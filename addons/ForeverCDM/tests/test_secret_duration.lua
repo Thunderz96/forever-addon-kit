@@ -13,8 +13,8 @@ local function block(name, nextName)
 end
 
 local secretValue = {}
-local icons = { cds = {}, buffs = {} }
-local db = { hideReady = true, buffDurations = {} }
+local icons = { cds = {}, buffs = {}, debuffs = {} }
+local db = { hideReady = true, buffDurations = {}, locked = true, rowSize = { buffs = 36 }, rowSpacing = { buffs = 4 } }
 local function secret(value) return value == secretValue end
 local cooldownInfo, spellDuration, auraDuration
 local spellCalls, auraCalls = 0, 0
@@ -47,6 +47,7 @@ local function frame()
         cd = cooldown, spellID = 123,
         IsShown = function() return true end,
         SetAlpha = function(self, value) self.alpha = value end,
+        ClearAllPoints = function() end, SetPoint = function() end,   -- packRow re-anchors visible icons
         icon = { SetDesaturated = function() end },
         count = { SetText = function() end },
     }
@@ -54,7 +55,7 @@ end
 icons.cds[1] = frame()
 icons.buffs[1] = frame()
 
-local chunk = "local icons, db, secret, C_Spell, C_UnitAuras = ...; local persistSoon = function() end; "
+local chunk = "local icons, db, secret, C_Spell, C_UnitAuras = ...; local persistSoon = function() end; local rows = { buffs = {} }; "
     .. block("updateCooldowns", "updateBuffs") .. "\n"
     .. block("updateBuffs", "refreshAll")
 local updateCooldowns, updateBuffs = assert(load(chunk .. "\nreturn updateCooldowns, updateBuffs"))(icons, db, secret, C_Spell, C_UnitAuras)
