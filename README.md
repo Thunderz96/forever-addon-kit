@@ -67,6 +67,10 @@ Day-two survey, 2026-09-18. Read for technique, not vendored; check each licence
 - [guildos](https://github.com/danielcosta42/guildos) (client probe, tooltip shim), [WickCore](https://github.com/Wicksmods/WickCore)
   (platform library, `Enum.AddOnRestrictionType` wrapper), [BetterBags](https://github.com/Cidan/BetterBags) (notes that Forever
   enumerates bank tabs but has no Warbank).
+- [wow-forever-addons](https://github.com/charles-hood/wow-forever-addons) (MIT): ForeverProbe and HunterProbe, in-client probes that write the
+  SavedVariables lifecycle, secret-value snapshots in and out of combat, range and dead-zone checks, and pet happiness to disk for reading
+  after a session; plus an offline WoW API stub for testing addons without the game, and a macOS dev loop. Re-checked this table on 70338
+  in [#1](https://github.com/Thunderz96/forever-addon-kit/issues/1).
 
 `data/forever_api.json` is the captured API surface: 6,045 global functions, 11,417 named frames,
 269 namespaces with their functions. `tools/api_scan.py` diffs any addon against it.
